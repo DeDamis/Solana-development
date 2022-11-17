@@ -14,7 +14,9 @@ const devKeys = new Keypair();
 const pubKey = new PublicKey(devKeys._keypair.publicKey).toString();
 const privKey = devKeys._keypair.secretKey;
 
-const getWalletBalance = async() => {
+//const livePublicKey = new PublicKey("");
+
+const getDevnetWalletBalance = async() => {
     try{
         const connection = new Connection(clusterApiUrl("devnet"),"confirmed");
         const myWallet = Keypair.fromSecretKey(privKey);
@@ -25,7 +27,15 @@ const getWalletBalance = async() => {
     }
 }
 
-getWalletBalance();
+const getLiveWalletBalance = async() => {
+    try{
+        const connection = new Connection(clusterApiUrl("mainnet-beta"),"confirmed");
+        const walletBalance = await connection.getBalance(livePublicKey);
+        console.log(`Wallet address is ${livePublicKey} and balance is ${walletBalance/LAMPORTS_PER_SOL} SOL`);
+    } catch(err) {
+        console.log(err);
+    }
+}
 
 const requestAirdrop = async() => {
     try {
@@ -43,5 +53,11 @@ const requestAirdrop = async() => {
     }
 }
 
-//requestAirdrop();
-//getWalletBalance();
+const main = async() => {
+    await getDevnetWalletBalance();
+    //await getLiveWalletBalance();
+    //await requestAirdrop();
+    //await getWalletBalance();
+}
+
+main(); // call main function
