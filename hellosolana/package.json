@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@solana/spl-name-service": "^0.1.4",
     "@solana/web3.js": "^1.66.2"
   }
 }
