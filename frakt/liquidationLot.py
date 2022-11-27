@@ -52,13 +52,18 @@ def unpack_LiquidationLot(data):
     endingAt = data[i:i+4]
     endingAt = endingAt[::-1]
     endingAt = endingAt.hex()
-    i+=4
+    i+=8
     print('endingAt: '+str(endingAt))
-    lotState = data[i:i+12]
+    lotState = data[i:i+1]
     lotState = lotState[::-1]
-    lotState = lotState
+    lotState = lotState.hex()
     i+=12
     print('lotState: '+str(lotState))
+    # lotstate:
+    #    0 : not active
+    #    1 : active
+    #    2 : redeemed
+    #    3 : paid back
     #idk
     ticketsCount = data[i:i+1]
     ticketsCount = ticketsCount[::-1]
@@ -77,7 +82,7 @@ def unpack_LiquidationLot(data):
     print('graceFee: '+str(graceFee))
 
 if __name__ == "__main__":
-    pk = PublicKey("2VRCYAHCPYKSpP9jAawvxgdv8oHi2VSAWWfwon1VrHNy")
+    pk = PublicKey("DwQZXXtbN8azZmo8AEwrwXcr3zqyFaYr3SKCYMXf32fw")
     connection = Client("https://api.mainnet-beta.solana.com")    
     result = json.loads(connection.get_account_info(pk, Confirmed, encoding="base64").to_json())
     json_formatted_str = json.dumps(result, indent=2)
@@ -86,6 +91,11 @@ if __name__ == "__main__":
     print("")
     print("Extracted data")
     print(result['result']['value']['data'][0])
+    
+    f = open("parsedAccountData.txt", "w")
+    f.write(result['result']['value']['data'][0])
+    f.close()
+    
     print("")
     print("Unpacked data")
     data = base64.b64decode(result['result']['value']['data'][0])
