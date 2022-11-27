@@ -1,0 +1,15 @@
+{
+  "type": "module",
+  "name": "genesysgo-premium-rpc-connection-init",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@solana/web3.js": "^1.66.2",
+    "@supercharge/fs": "^3.4.0",
+    "axios": "^1.1.3",
+    "bs58": "^5.0.0",
+    "dotenv": "^16.0.3",
+    "tweetnacl": "^1.0.3"
+  }
+}
