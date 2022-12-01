@@ -23,10 +23,22 @@ async def main():
     #print(json_formatted_str)
     #print(data[30]['meta']['logMessages'][1])
     putLoanToLiquidations = []
+    liquidateNftToRaffles = []
     for index, transaction in enumerate(data):
-        if data[index]['meta']['logMessages'][1] == "Program log: Instruction: PutLoanToLiquidationRaffles":
-            putLoanToLiquidations.append(data[index])
+        if data[index]['meta']['err'] == None:
+            message = data[index]['meta']['logMessages'][1]
+            if message == "Program log: Instruction: PutLoanToLiquidationRaffles":
+                print("PutLoanToLiquidationRaffles detected!")
+                putLoanToLiquidations.append(data[index])
+            elif message == "Program log: Instruction: LiquidateNftToRaffles":
+                liquidateNftToRaffles.append(data[index])
+                print("LiquidateNftToRaffles detected!")
+                #print(transaction)
+                #print(str(index)+":"+transaction['meta']['logMessages'][1])
+                #print(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
+                #print(transaction['transaction']['message']['accountKeys'][12]['pubkey'])
     dfAll = pd.DataFrame()
+    #print(putLoanToLiquidations[0])
     for index, transaction in enumerate(putLoanToLiquidations):
         #print(str(index)+":"+transaction['meta']['logMessages'][1])
         #print(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
@@ -39,7 +51,22 @@ async def main():
         df3 = pd.merge(df, df2, how="inner", left_on='nftMint', right_on='nftMint')
         #print(df3)
         dfAll = pd.concat([dfAll, df3], ignore_index=True, copy=True)
-    print(dfAll)
+    
+    #print(liquidateNftToRaffles[2]['transaction'])
+    #print("")
+    for index, transaction in enumerate(liquidateNftToRaffles):
+        #print(transaction['transaction']['signatures'][0])
+        try:
+            #print(transaction['transaction']['message']['accountKeys'][12]['pubkey'])
+            df = get_NFT_metadata(transaction['transaction']['message']['accountKeys'][12]['pubkey'])
+            #print(df)
+            #print(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
+            df2 = parseLiquidationLot(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
+            df3 = pd.merge(df, df2, how="inner", left_on='nftMint', right_on='nftMint')
+            dfAll = pd.concat([dfAll, df3], ignore_index=True, copy=True)
+        except :
+            pass
+    print(dfAll[["name", "lotState", "ticketsCount"]])
 
 
 if __name__ == "__main__":

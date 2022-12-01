@@ -88,9 +88,12 @@ def unpack_LiquidationLot(data):
     
 def parseLiquidationLot(pub_key):
     pk = PublicKey(pub_key)
-    connection = Client("https://api.mainnet-beta.solana.com")    
+    connection = Client("https://api.mainnet-beta.solana.com")
+    #print(pk)
     result = json.loads(connection.get_account_info(pk, Confirmed, encoding="base64").to_json())
+    #print(result)
     data = base64.b64decode(result['result']['value']['data'][0])
+    #print(data)
     unpacked = unpack_LiquidationLot(data)
     unpacked['liquidationLot'] = pub_key
     return unpacked

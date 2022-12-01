@@ -45,11 +45,10 @@ async function getConnection(url) {
   let latestBlockHash = await connection.getRecentPerformanceSamples(1);
   let latestBlockTime = await connection.getBlockTime(latestBlockHash[0]['slot']);
   
-  let signatures_1000_pcs_block = await connection.getSignaturesForAddress(publicKeyDesiredWallet, {limit : 100});
+  let signatures_1000_pcs_block = await connection.getSignaturesForAddress(publicKeyDesiredWallet, {limit : 1000});
   let AllDaySignatures = [];
   signatures_1000_pcs_block.forEach((signature) => AllDaySignatures.push(signature));
   console.log(`InstructionFetch:${signatures_1000_pcs_block.length}`)
-  /*
   let lastSignatureBlockTime = signatures_1000_pcs_block[signatures_1000_pcs_block.length-1]['blockTime']
   let lastSignature = signatures_1000_pcs_block[signatures_1000_pcs_block.length-1]['signature']
   console.log(`CurrentBlockTime:${latestBlockTime} --> ${moment.unix(latestBlockTime).format("YYYY-MM-DD HH:mm:ss")}`)
@@ -61,11 +60,11 @@ async function getConnection(url) {
     lastSignature = signatures_1000_pcs_block[signatures_1000_pcs_block.length-1]['signature']
     signatures_1000_pcs_block = [];
   }
-  */
   console.log(`InstructionFetchedTotalCount:${AllDaySignatures.length}`)
   console.log(`Writing to AllDaySignatures.txt...`)
   Fs.writeFile("./temp/AllDaySignatures.txt", JSON.stringify(AllDaySignatures));
   console.log(`Writing done.`)
+  
   
   const heliusConnection = new Connection("https://rpc.helius.xyz/?api-key=c2811122-cfbf-47a8-9f4e-30b3ac1cc68c");
   // let rr = await conn.getSignaturesForAddress(publicKeyWallet, {limit : 3}); // Helius alt
@@ -78,4 +77,5 @@ async function getConnection(url) {
   console.log(`Writing to allTransactionsParsed.txt...`)
   Fs.writeFile("./temp/allTransactionsParsed.txt", JSON.stringify(allParsed));
   console.log(`Writing done.`)
+  
 })();
