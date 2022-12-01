@@ -56,17 +56,22 @@ async def main():
     #print("")
     for index, transaction in enumerate(liquidateNftToRaffles):
         #print(transaction['transaction']['signatures'][0])
-        try:
             #print(transaction['transaction']['message']['accountKeys'][12]['pubkey'])
+        exceptThrown=False
+        try:
             df = get_NFT_metadata(transaction['transaction']['message']['accountKeys'][12]['pubkey'])
+        except:
+            exceptThrown=True
+            pass
             #print(df)
             #print(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
-            df2 = parseLiquidationLot(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
-            df3 = pd.merge(df, df2, how="inner", left_on='nftMint', right_on='nftMint')
+        df2 = parseLiquidationLot(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
+        df3 = pd.merge(df, df2, how="inner", left_on='nftMint', right_on='nftMint')
+        if exceptThrown:
+            dfAll = pd.concat([dfAll, df2], ignore_index=True, copy=True)
+        else:
             dfAll = pd.concat([dfAll, df3], ignore_index=True, copy=True)
-        except :
-            pass
-    print(dfAll[["name", "lotState", "ticketsCount"]])
+    print(dfAll[["name", "lotState", "ticketsCount", "liquidationLot"]])
 
 
 if __name__ == "__main__":
