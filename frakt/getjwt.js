@@ -51,7 +51,7 @@ import bs58 from "bs58";
     console.error("No valid jwt token returned");
     return;
   }
-  Fs.writeFile("jwt.txt", tokenResponse.data.token);
+  Fs.writeFile("./data/jwt.txt", tokenResponse.data.token);
   console.log(
     `Success! New JWT (${tokenResponse.data.token.slice(0, 8)}...) is written to disk\n`
   );

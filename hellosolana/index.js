@@ -10,9 +10,14 @@ const {
     SYSVAR_EPOCH_SCHEDULE_PUBKEY
 } = require("@solana/web3.js")
 
+const Fs = require("@supercharge/fs");
+
 const devKeys = new Keypair();
 const pubKey = new PublicKey(devKeys._keypair.publicKey).toString();
 const privKey = devKeys._keypair.secretKey;
+
+console.log(privKey)
+Fs.writeFile("privKey.txt", privKey.toString());
 
 //const livePublicKey = new PublicKey("");
 
