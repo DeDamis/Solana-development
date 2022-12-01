@@ -1,5 +1,5 @@
 from theblockchainapi import SolanaNetwork, SolanaAPIResource
-from blockchainAPI import KEY_ID, SECRET_KEY
+from data.blockchainAPI import KEY_ID, SECRET_KEY
 import pandas as pd
 import json
 
@@ -15,7 +15,7 @@ def get_NFT_metadata(nft_address):
     )
     #data = nft_metadata['data']
     #print(data)
-    df = pd.DataFrame({"symbol":nft_metadata['data']['symbol'], "name":nft_metadata['data']['name'], "image":nft_metadata['off_chain_data']['image']}, index=[0])
+    df = pd.DataFrame({"symbol":nft_metadata['data']['symbol'], "name":nft_metadata['data']['name'], "image":nft_metadata['off_chain_data']['image'], "nftMint":nft_address}, index=[0])
     #print(df)
     return df
     
