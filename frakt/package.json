@@ -5,11 +5,13 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "@frakt-protocol/frakt-sdk": "^0.7.11",
     "@solana/web3.js": "^1.66.2",
     "@supercharge/fs": "^3.4.0",
     "axios": "^1.1.3",
     "bs58": "^5.0.0",
     "dotenv": "^16.0.3",
+    "moment": "^2.29.4",
     "tweetnacl": "^1.0.3"
   }
 }
