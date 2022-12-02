@@ -12,6 +12,13 @@ import moment from 'moment';
 
 import { utils, loans, pools } from '@frakt-protocol/frakt-sdk';
 
+const daysToCheck = 15;
+const RPC_DELAY = 1000;
+
+function delay(time) {
+  return new Promise(resolve => setTimeout(resolve, time));
+}
+
 // Initializace connection with GenesysGo Premium RPC server
 async function getConnection(url) {
   try {
@@ -36,6 +43,7 @@ async function getConnection(url) {
   // A couple of demo calls
   let version = await connection.getVersion();
   console.log(version);
+  await delay(RPC_DELAY);
 
   const publicKeyLending = new PublicKey("A66HabVL3DzNzeJgcHYtRRNW1ZRMKwBfrdSR4kLsZ9DJ");
   const publicKeyDesiredWallet = new PublicKey("5spUuHreGH8nH6st6VujouLFj7fhXpQxdYBq9TWu6gqS");
@@ -43,9 +51,12 @@ async function getConnection(url) {
 
   // get last {limit: x} transactions of address
   let latestBlockHash = await connection.getRecentPerformanceSamples(1);
+  await delay(RPC_DELAY);
   let latestBlockTime = await connection.getBlockTime(latestBlockHash[0]['slot']);
+  await delay(RPC_DELAY);
   
   let signatures_1000_pcs_block = await connection.getSignaturesForAddress(publicKeyDesiredWallet, {limit : 1000});
+  await delay(RPC_DELAY);
   let AllDaySignatures = [];
   signatures_1000_pcs_block.forEach((signature) => AllDaySignatures.push(signature));
   console.log(`InstructionFetch:${signatures_1000_pcs_block.length}`)
@@ -53,12 +64,13 @@ async function getConnection(url) {
   let lastSignature = signatures_1000_pcs_block[signatures_1000_pcs_block.length-1]['signature']
   console.log(`CurrentBlockTime:${latestBlockTime} --> ${moment.unix(latestBlockTime).format("YYYY-MM-DD HH:mm:ss")}`)
   console.log(`LastFetchedBlockTime:${lastSignatureBlockTime} --> ${moment.unix(lastSignatureBlockTime).format("YYYY-MM-DD HH:mm:ss")}`)
-  while(latestBlockTime - lastSignatureBlockTime < 86400){
+  while(latestBlockTime - lastSignatureBlockTime < (86400*daysToCheck)){
     signatures_1000_pcs_block = await connection.getSignaturesForAddress(publicKeyDesiredWallet, {limit : 1000, before : lastSignature})
     signatures_1000_pcs_block.forEach((signature) => AllDaySignatures.push(signature));
     lastSignatureBlockTime = signatures_1000_pcs_block[signatures_1000_pcs_block.length-1]['blockTime']
     lastSignature = signatures_1000_pcs_block[signatures_1000_pcs_block.length-1]['signature']
     signatures_1000_pcs_block = [];
+    await delay(RPC_DELAY);
   }
   console.log(`InstructionFetchedTotalCount:${AllDaySignatures.length}`)
   console.log(`Writing to AllDaySignatures.txt...`)
@@ -71,11 +83,17 @@ async function getConnection(url) {
   console.log(`Parsing transactions....`)
   let allParsed = [];
   for(let i = 0; i < AllDaySignatures.length;i++){
-    let oneParsed = await heliusConnection.getParsedTransaction(AllDaySignatures[i]['signature']);
+    process.stdout.write(`[${i}/${AllDaySignatures.length}] Parsed...`);
+     let oneParsed = await heliusConnection.getParsedTransaction(AllDaySignatures[i]['signature']); // HELIUS RPC
+    // let oneParsed = await connection.getParsedTransaction(AllDaySignatures[i]['signature']); // GenesysGo RPC
     allParsed.push(oneParsed);
+    process.stdout.clearLine(0);
+    process.stdout.cursorTo(0);
   }
+  process.stdout.write("\n"); // end the line
   console.log(`Writing to allTransactionsParsed.txt...`)
   Fs.writeFile("./temp/allTransactionsParsed.txt", JSON.stringify(allParsed));
   console.log(`Writing done.`)
   
+
 })();
