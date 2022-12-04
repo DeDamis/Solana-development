@@ -72,6 +72,13 @@ async def main():
         else:
             dfAll = pd.concat([dfAll, df3], ignore_index=True, copy=True)
     print(dfAll[["name", "lotState", "ticketsCount", "liquidationLot"]])
+    justActive = dfAll[dfAll["lotState"] == "active"]
+    justActive = justActive['liquidationLot']
+    f_write = open("./data/ActiveLots.txt", "a")
+    for i in range(0, justActive.shape[0]):
+        #print(justActive[i:i+1].to_string(index=False))
+        f_write.write(justActive[i:i+1].to_string(index=False)+"\n")
+        pass
 
 
 if __name__ == "__main__":
