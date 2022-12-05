@@ -48,6 +48,7 @@ async function getConnection(url) {
   const publicKeyLending = new PublicKey("A66HabVL3DzNzeJgcHYtRRNW1ZRMKwBfrdSR4kLsZ9DJ");
   const publicKeyDesiredWallet = new PublicKey("5spUuHreGH8nH6st6VujouLFj7fhXpQxdYBq9TWu6gqS");
   const publicKeyWallet = new PublicKey("3dzwuFAQMmbgQDKBVqjyVkwUyapgZjC7yWHe3M88Pdk5");
+  const RaffleProgramPK = new PublicKey("raffyhEJMx59iDx778Y9gdaVcP2XDeusPcPBxwr3qAH");
 
   // get last {limit: x} transactions of address
   let latestBlockHash = await connection.getRecentPerformanceSamples(1);
@@ -55,7 +56,7 @@ async function getConnection(url) {
   let latestBlockTime = await connection.getBlockTime(latestBlockHash[0]['slot']);
   await delay(RPC_DELAY);
   
-  let signatures_1000_pcs_block = await connection.getSignaturesForAddress(publicKeyDesiredWallet, {limit : 1000});
+  let signatures_1000_pcs_block = await connection.getSignaturesForAddress(RaffleProgramPK, {limit : 1000});
   await delay(RPC_DELAY);
   let AllDaySignatures = [];
   signatures_1000_pcs_block.forEach((signature) => AllDaySignatures.push(signature));
@@ -95,5 +96,4 @@ async function getConnection(url) {
   Fs.writeFile("./temp/allTransactionsParsed.txt", JSON.stringify(allParsed));
   console.log(`Writing done.`)
   
-
 })();
