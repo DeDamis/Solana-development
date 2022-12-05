@@ -25,34 +25,42 @@ import pandas as pd
     
 def unpack_raffleAccount(data):
     # start index
-    i = 8;
-    nftMint = base58.b58encode(bytes(struct.unpack('<' + "B"*32, data[i:i+32])));
-    i += 32;
-    print('nftMint: '+str(nftMint));
-    startedAt = data[i:i+7];
-    i += 8;
-    print('startedAt: '+str(startedAt));
-    endAt = data[i:i+7];
-    i += 8;
-    print('endAt: '+str(endAt));
+    i = 8
+    nftMint = base58.b58encode(bytes(struct.unpack('<' + "B"*32, data[i:i+32])))
+    nftMint = nftMint.decode()
+    i += 32
+    #print('nftMint: '+str(nftMint))
+    startedAt = data[i:i+7]
+    startedAt = startedAt.hex()
+    i += 8
+    #print('startedAt: '+str(startedAt))
+    endAt = data[i:i+7]
+    endAt = endAt.hex()
+    i += 8
+    #print('endAt: '+str(endAt))
     statusStates=["started", "endedWithSold", "endedWithoutSold", "rejected"]
-    status = data[i:i+1];
-    i += 12;
-    print('status: '+str(status));
-    nftOwner = base58.b58encode(bytes(struct.unpack('<' + "B"*32, data[i:i+32])));
-    i += 32;
-    print('nftMint: '+str(nftOwner));
-    ticketsAmount = data[i:i+7];
-    i += 8;
-    print('ticketsAmount: '+str(ticketsAmount));
-    usersAmount = data[i:i+7];
-    i += 8;
-    print('usersAmount: '+str(usersAmount));
-    depositAmount = data[i:i+7];
-    i += 8;
-    print('depositAmount: '+str(depositAmount));
-    #df = pd.DataFrame({'nftMint':nftMint.decode(), 'lotState':lotstate[int(str(lotState))], 'ticketsCount':ticketsCount }, index=[0])
-    #return df
+    status = data[i:i+1]
+    status = status.hex()
+    i += 12
+    #print('status: '+str(status))
+    nftOwner = base58.b58encode(bytes(struct.unpack('<' + "B"*32, data[i:i+32])))
+    nftOwner = nftOwner.decode()
+    i += 32
+    #print('nftOwner: '+str(nftOwner))
+    ticketsAmount = data[i:i+7]
+    ticketsAmount = ticketsAmount.hex()
+    i += 8
+    #print('ticketsAmount: '+str(ticketsAmount))
+    usersAmount = data[i:i+7]
+    usersAmount = usersAmount.hex()
+    i += 8
+    #print('usersAmount: '+str(usersAmount))
+    depositAmount = data[i:i+7]
+    depositAmount = depositAmount.hex()
+    i += 8
+    #print('depositAmount: '+str(depositAmount))
+    df = pd.DataFrame({'nftMint':nftMint, 'status':statusStates[int(str(status))], 'ticketsAmount':ticketsAmount }, index=[0])
+    return df
 
 def unpack_LiquidationLot(data):
     # start index
@@ -118,6 +126,7 @@ def unpack_LiquidationLot(data):
     return df
     
 def parseRaffleAccount(pub_key):
+    #pub_key = "8X1TomsfTnbf61rPhqksYfmEtFkkt7KSq467Gm9EttmU"
     pk = PublicKey(pub_key)
     connection = Client("https://api.mainnet-beta.solana.com")
     #print(pk)
@@ -143,6 +152,9 @@ def parseLiquidationLot(pub_key):
 
 
 if __name__ == "__main__":
+    df = parseRaffleAccount("nic")
+    print(df)
+    """
     pk = PublicKey("DwQZXXtbN8azZmo8AEwrwXcr3zqyFaYr3SKCYMXf32fw")
     connection = Client("https://api.mainnet-beta.solana.com")    
     result = json.loads(connection.get_account_info(pk, Confirmed, encoding="base64").to_json())
@@ -161,3 +173,4 @@ if __name__ == "__main__":
     print("Unpacked data")
     data = base64.b64decode(result['result']['value']['data'][0])
     metadata = unpack_LiquidationLot(data)
+    """
