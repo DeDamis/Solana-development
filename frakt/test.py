@@ -69,9 +69,9 @@ async def main():
             dfAll = pd.concat([dfAll, df3], ignore_index=True, copy=True)
     print("")
     if 'name' in dfAll.columns:
-        print(dfAll[["name", "status", "ticketsAmount", "raffleAccount"]])
+        print(dfAll[["name", "status", "ticketsAmount", "usersAmount", "depositAmount", "raffleAccount"]])
     else:
-        print(dfAll[["status", "ticketsAmount", "raffleAccount"]])
+        print(dfAll[["status", "ticketsAmount", "usersAmount", "depositAmount", "raffleAccount"]])
     dfAll.to_csv("./temp/output.csv")
     justActive = dfAll[dfAll["status"] == "started"]
     justActive = justActive['raffleAccount']
