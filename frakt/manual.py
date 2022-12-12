@@ -36,7 +36,7 @@ def getFullLiquidationLotDataFromFile(filename):
         pkLiquidationLot = f.readline()
     return dfAll
 
-def getFullRaffleDataFromFile(filename):
+def getFullRaffleDataFromFile(filename, df_update = None):
     df_all = pd.DataFrame()
     f = open(filename, "r")
     public_key_raffle_account = f.readline().rstrip('\n')
@@ -45,9 +45,12 @@ def getFullRaffleDataFromFile(filename):
         time.sleep(SOLANA_PUBLIC_API_DELAY)
         df3 = df
         try:
-            df2 = get_NFT_metadata(df['nftMint'].to_string(index=False))
+            if df_update is None:
+                df2 = get_NFT_metadata(df['nftMint'].to_string(index=False))
+                time.sleep(BLOCKCHAIN_API_DELAY)
+            else:
+                df2 = pd.DataFrame(df_update.loc[df_update['nftMint'] == df['nftMint'].to_string(index=False), ['symbol', 'name', 'image', 'nftMint']].copy())
             df3 = pd.merge(df2, df, how="inner", left_on='nftMint', right_on='nftMint')
-            time.sleep(BLOCKCHAIN_API_DELAY)
         except:
             pass
         df_all = pd.concat([df_all, df3], ignore_index=True, copy=True)
@@ -69,10 +72,11 @@ def getPartialLiquidationLotDataFromFile(filename):
 if __name__ == "__main__":
     #data = getPartialLiquidationLotDataFromFile("./data/ActiveLots.txt")
     #print(data)
-    refresh=29
+    refresh=5
+    data2 = getFullRaffleDataFromFile("./temp/ActiveRaffles.txt")
     while True:
         #data2 = getFullLiquidationLotDataFromFile("./data/ActiveLots.txt")
-        data2 = getFullRaffleDataFromFile("./temp/ActiveRaffles.txt")
+        data2 = getFullRaffleDataFromFile("./temp/ActiveRaffles.txt", df_update=data2)
         print(data2[['name', 'status', 'ticketsAmount', 'usersAmount', 'depositAmount', 'raffleAccount']])
         for i in range(0,refresh):
             print("Refreshing in "+str(refresh-i)+" seconds...", end='\r')

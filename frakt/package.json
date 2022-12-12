@@ -6,6 +6,7 @@
   "license": "MIT",
   "dependencies": {
     "@frakt-protocol/frakt-sdk": "^0.7.11",
+    "@frakters/raffle-sdk": "^0.0.5",
     "@solana/web3.js": "^1.66.2",
     "@supercharge/fs": "^3.4.0",
     "axios": "^1.1.3",

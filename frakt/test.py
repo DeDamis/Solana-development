@@ -48,7 +48,8 @@ async def main():
         df2 = parseRaffleAccount(transaction['transaction']['message']['accountKeys'][TRANSACTION_RAFFLE_ACCOUNT_ADDRESS_INDEX]['pubkey'])
         time.sleep(SOLANA_PUBLIC_API_DELAY)
         df = pd.DataFrame({"nftMint":"0"}, index=[0])
-        if df2['status'].to_string(index=False) == "started":
+        status = df2['status'].to_string(index=False)
+        if status == "started" or status == "endedWithSold":
             try:
                 #mint_address=transaction['transaction']['message']['accountKeys'][TRANSACTION_NFT_MINT_ADDRESS_INDEX]['pubkey']
                 mint_address=df2['nftMint'].to_string(index=False)
