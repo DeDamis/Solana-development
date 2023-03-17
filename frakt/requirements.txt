@@ -2,3 +2,4 @@ base58
 solana
 theblockchainapi
 pandas
+numpy

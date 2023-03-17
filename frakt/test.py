@@ -11,60 +11,56 @@ from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.types import MemcmpOpts
 
-
 from get_NFT_metadata import get_NFT_metadata
 from liquidationLot import parseLiquidationLot
+from liquidationLot import parseRaffleAccount
+
+BLOCKCHAIN_API_DELAY=2.5 # time in [s]
+SOLANA_PUBLIC_API_DELAY=0.5 # time in [s]
+
+TRANSACTION_RAFFLE_ACCOUNT_ADDRESS_INDEX=1
+TRANSACTION_NFT_MINT_ADDRESS_INDEX=2
 
 async def main():
     f = open("./temp/allTransactionsParsed.txt", "r")
     data = f.read()
     data = json.loads(data)
     #print(data[0])
-    #json_formatted_str = json.dumps(data[30], indent=2)
+    #json_formatted_str = json.dumps(data[0], indent=2)
     #print(json_formatted_str)
-    #print(data[30]['meta']['logMessages'][1])
-    putLoanToLiquidations = []
-    liquidateNftToRaffles = []
-    liqNFTtoRaffles = 0
-    putNFTtoRaffles = 0
+    
+    initializeRaffle = []
+    initializeRaffleCounter = 0
     print("Detection:")
     for index, transaction in enumerate(data):
         if data[index]['meta']['err'] == None:
-            message = data[index]['meta']['logMessages'][1]
-            if message == "Program log: Instruction: PutLoanToLiquidationRaffles":
-                putNFTtoRaffles += 1
-                #print(str(putNFTtoRaffles)+"x: PutLoanToLiquidationRaffles detected!", end='\r')
-                putLoanToLiquidations.append(data[index])
-            elif message == "Program log: Instruction: LiquidateNftToRaffles":
-                liqNFTtoRaffles += 1
-                liquidateNftToRaffles.append(data[index])
-                #print(str(liqNFTtoRaffles)+"x: LiquidateNftToRaffles detected!", end='\r')
-                #print(transaction)
-                #print(str(index)+":"+transaction['meta']['logMessages'][1])
-                #print(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
-                #print(transaction['transaction']['message']['accountKeys'][12]['pubkey'])
-            print("LiquidateNftToRaffles: "+str(liqNFTtoRaffles)+" | "+"PutLoanToLiquidationRaffles: "+str(putNFTtoRaffles), end='\r')
+            for message in data[index]['meta']['logMessages']:
+                if message == "Program log: Instruction: InitializeRaffle":
+                    initializeRaffleCounter += 1
+                    initializeRaffle.append(data[index])
+            print("InitializeRaffle: "+str(initializeRaffleCounter), end='\r')
     print("")
+    #print(initializeRaffle[0]['transaction']['message']['accountKeys'][TRANSACTION_RAFFLE_ACCOUNT_ADDRESS_INDEX]['pubkey'])
     dfAll = pd.DataFrame()
-    #print(putLoanToLiquidations[0])
-    for index, transaction in enumerate(putLoanToLiquidations):
-        print("["+str(index+1)+"/"+str(putNFTtoRaffles)+"] Fetching info for \"PutLoanToLiquidationRaffles\"", end='\r')
-        #print(str(index)+":"+transaction['meta']['logMessages'][1])
-        #print(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
-        #print(transaction['transaction']['message']['accountKeys'][9]['pubkey'])
+    for index, transaction in enumerate(initializeRaffle):
+        print("["+str(index+1)+"/"+str(initializeRaffleCounter)+"] Fetching info for \"InitializeRaffle\"", end='\r')
         exceptThrown=True
-        df2 = parseLiquidationLot(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
-        time.sleep(0.5)
+        df2 = parseRaffleAccount(transaction['transaction']['message']['accountKeys'][TRANSACTION_RAFFLE_ACCOUNT_ADDRESS_INDEX]['pubkey'])
+        time.sleep(SOLANA_PUBLIC_API_DELAY)
         df = pd.DataFrame({"nftMint":"0"}, index=[0])
-        if df2['lotState'].to_string(index=False) == "active":
+        status = df2['status'].to_string(index=False)
+        if status == "started" or status == "endedWithSold":
             try:
-                df = get_NFT_metadata(transaction['transaction']['message']['accountKeys'][9]['pubkey'])
-                time.sleep(2.5)
+                #mint_address=transaction['transaction']['message']['accountKeys'][TRANSACTION_NFT_MINT_ADDRESS_INDEX]['pubkey']
+                mint_address=df2['nftMint'].to_string(index=False)
+                #print(mint_address)
+                df = get_NFT_metadata(mint_address)
+                time.sleep(BLOCKCHAIN_API_DELAY)
                 exceptThrown=False
-            except:
+            except Exception as e:
+                print(e)
                 pass
         #print(df)
-        #print("")
         #print(df2)
         df3 = pd.merge(df, df2, how="inner", left_on='nftMint', right_on='nftMint')
         #print(df3)
@@ -73,38 +69,14 @@ async def main():
         else:
             dfAll = pd.concat([dfAll, df3], ignore_index=True, copy=True)
     print("")
-    #print(liquidateNftToRaffles[2]['transaction'])
-    #print("")
-    for index, transaction in enumerate(liquidateNftToRaffles):
-        print("["+str(index+1)+"/"+str(liqNFTtoRaffles)+"] Fetching info for \"LiquidateNftToRaffles\"", end='\r')
-        #print(transaction['transaction']['signatures'][0])
-            #print(transaction['transaction']['message']['accountKeys'][12]['pubkey'])
-        exceptThrown=True
-        df2 = parseLiquidationLot(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
-        time.sleep(0.5)
-        df = pd.DataFrame({"nftMint":"0"}, index=[0])
-        if df2['lotState'].to_string(index=False) == "active":
-            try:
-                df = get_NFT_metadata(transaction['transaction']['message']['accountKeys'][12]['pubkey'])
-                time.sleep(2.5)
-                exceptThrown=False
-            except:
-                pass
-            #print(df)
-            #print(transaction['transaction']['message']['accountKeys'][1]['pubkey'])
-        df3 = pd.merge(df, df2, how="inner", left_on='nftMint', right_on='nftMint')
-        if exceptThrown:
-            dfAll = pd.concat([dfAll, df2], ignore_index=True, copy=True)
-        else:
-            dfAll = pd.concat([dfAll, df3], ignore_index=True, copy=True)
-    if 'name' in df.columns:
-        print(dfAll[["name", "lotState", "ticketsCount", "liquidationLot"]])
+    if 'name' in dfAll.columns:
+        print(dfAll[["name", "status", "ticketsAmount", "usersAmount", "depositAmount", "raffleAccount"]])
     else:
-        print(dfAll[["lotState", "ticketsCount", "liquidationLot"]])
+        print(dfAll[["status", "ticketsAmount", "usersAmount", "depositAmount", "raffleAccount"]])
     dfAll.to_csv("./temp/output.csv")
-    justActive = dfAll[dfAll["lotState"] == "active"]
-    justActive = justActive['liquidationLot']
-    f_write = open("./data/ActiveLots.txt", "a")
+    justActive = dfAll[dfAll["status"] == "started"]
+    justActive = justActive['raffleAccount']
+    f_write = open("./temp/ActiveRaffles.txt", "a")
     for i in range(0, justActive.shape[0]):
         #print(justActive[i:i+1].to_string(index=False))
         f_write.write(justActive[i:i+1].to_string(index=False)+"\n")

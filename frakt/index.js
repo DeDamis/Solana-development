@@ -10,9 +10,11 @@ import Fs from "@supercharge/fs"; // IO File operations
 import axios from "axios";
 import moment from 'moment';
 
+import * as raffle from "@frakters/raffle-sdk";
+
 import { utils, loans, pools } from '@frakt-protocol/frakt-sdk';
 
-const daysToCheck = 15;
+const daysToCheck = 0.5;
 const RPC_DELAY = 1000;
 
 function delay(time) {
@@ -48,6 +50,7 @@ async function getConnection(url) {
   const publicKeyLending = new PublicKey("A66HabVL3DzNzeJgcHYtRRNW1ZRMKwBfrdSR4kLsZ9DJ");
   const publicKeyDesiredWallet = new PublicKey("5spUuHreGH8nH6st6VujouLFj7fhXpQxdYBq9TWu6gqS");
   const publicKeyWallet = new PublicKey("3dzwuFAQMmbgQDKBVqjyVkwUyapgZjC7yWHe3M88Pdk5");
+  const RaffleProgramPK = new PublicKey("raffyhEJMx59iDx778Y9gdaVcP2XDeusPcPBxwr3qAH");
 
   // get last {limit: x} transactions of address
   let latestBlockHash = await connection.getRecentPerformanceSamples(1);
@@ -55,7 +58,7 @@ async function getConnection(url) {
   let latestBlockTime = await connection.getBlockTime(latestBlockHash[0]['slot']);
   await delay(RPC_DELAY);
   
-  let signatures_1000_pcs_block = await connection.getSignaturesForAddress(publicKeyDesiredWallet, {limit : 1000});
+  let signatures_1000_pcs_block = await connection.getSignaturesForAddress(RaffleProgramPK, {limit : 100});
   await delay(RPC_DELAY);
   let AllDaySignatures = [];
   signatures_1000_pcs_block.forEach((signature) => AllDaySignatures.push(signature));
@@ -65,7 +68,7 @@ async function getConnection(url) {
   console.log(`CurrentBlockTime:${latestBlockTime} --> ${moment.unix(latestBlockTime).format("YYYY-MM-DD HH:mm:ss")}`)
   console.log(`LastFetchedBlockTime:${lastSignatureBlockTime} --> ${moment.unix(lastSignatureBlockTime).format("YYYY-MM-DD HH:mm:ss")}`)
   while(latestBlockTime - lastSignatureBlockTime < (86400*daysToCheck)){
-    signatures_1000_pcs_block = await connection.getSignaturesForAddress(publicKeyDesiredWallet, {limit : 1000, before : lastSignature})
+    signatures_1000_pcs_block = await connection.getSignaturesForAddress(publicKeyDesiredWallet, {limit : 100, before : lastSignature})
     signatures_1000_pcs_block.forEach((signature) => AllDaySignatures.push(signature));
     lastSignatureBlockTime = signatures_1000_pcs_block[signatures_1000_pcs_block.length-1]['blockTime']
     lastSignature = signatures_1000_pcs_block[signatures_1000_pcs_block.length-1]['signature']
@@ -95,5 +98,4 @@ async function getConnection(url) {
   Fs.writeFile("./temp/allTransactionsParsed.txt", JSON.stringify(allParsed));
   console.log(`Writing done.`)
   
-
 })();
