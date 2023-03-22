@@ -31,6 +31,24 @@ pub mod escrow_headon_attempt {
             ), token_amount, )?;
         Ok(())
     }
+
+    pub fn retrieve(ctx: Context<Retrieve>) -> Result<()> {
+        // transfer escrowed tokens back to user
+        anchor_spl::token::transfer(
+            CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(),
+             anchor_spl::token::Transfer {
+                from: ctx.accounts.escrowed_tokens_token_account.to_account_info(),
+                to: ctx.accounts.tokens_token_account.to_account_info(),
+                authority: ctx.accounts.escrow.to_account_info(),
+             },
+             &[&["escrow".as_bytes(), ctx.accounts.escrow.authority.as_ref(), &[ctx.accounts.escrow.bump]]],
+            ),
+            ctx.accounts.escrowed_tokens_token_account.amount,
+        )?;
+        Ok(())
+    }
+
+
 }
 
 #[derive(Accounts)]
@@ -55,6 +73,20 @@ pub struct Initialize<'info> {
     system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct Retrieve<'info> {
+    pub user: Signer<'info>,
+    // PDA Escrow Data account (Reference)
+    #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref()], bump = escrow.bump,)]
+    pub escrow: Account<'info, Escrow>,
+    // Escrow Token account (Reference)
+    #[account(mut, constraint = escrowed_tokens_token_account.key() == escrow.escrowed_tokens_token_account)]
+    pub escrowed_tokens_token_account: Account <'info, TokenAccount>,
+    // Reference to the recipient token account
+    #[account(mut, constraint = tokens_token_account.mint == escrow.token_mint)]
+    pub tokens_token_account: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
 
 
 #[account]
