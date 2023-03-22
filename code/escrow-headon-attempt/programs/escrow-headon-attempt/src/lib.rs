@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("557jTvF33E6y2rBk9rXVbLDtSepABhpdvNRm8JssSJKi");
 
 #[program]
 pub mod escrow_headon_attempt {
@@ -45,6 +45,18 @@ pub mod escrow_headon_attempt {
             ),
             ctx.accounts.escrowed_tokens_token_account.amount,
         )?;
+        /*
+        anchor_spl::token::close_account(
+            CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(),
+            anchor_spl::token::CloseAccount {
+                account: ctx.accounts.escrowed_tokens_token_account.to_account_info(),
+                destination: ctx.accounts.user.to_account_info(),
+                authority: ctx.accounts.escrow.to_account_info(),
+            },
+            &[&["escrow".as_bytes(), ctx.accounts.escrow.authority.as_ref(), &[ctx.accounts.escrow.bump]]],
+        ))?;
+         */
+
         Ok(())
     }
 
@@ -84,8 +96,8 @@ pub struct Retrieve<'info> {
     pub escrowed_tokens_token_account: Account <'info, TokenAccount>,
     // Reference to the recipient token account
     #[account(mut, constraint = tokens_token_account.mint == escrow.token_mint)]
-    pub tokens_token_account: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
+    tokens_token_account: Account<'info, TokenAccount>,
+    token_program: Program<'info, Token>,
 }
 
 
