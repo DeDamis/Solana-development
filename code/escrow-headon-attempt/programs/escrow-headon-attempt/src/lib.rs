@@ -116,5 +116,6 @@ impl Escrow {
     + 32    // authority: Pubkey
     + 1     // bump: u8
     + 32    // token_mint: Pubkey
+    + 32    // escrowed_tokens_token_account: Pubkey
     + 8;    // token_amount: u64
 }
