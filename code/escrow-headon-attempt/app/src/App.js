@@ -2,10 +2,11 @@ import { Buffer } from 'buffer';
 
 import './App.css';
 import {useState} from "react";
-import {Connection, PublicKey} from '@solana/web3.js';
+import {Connection, PublicKey, Transaction} from '@solana/web3.js';
 
-import {LAMPORTS_PER_SOL, SYSVAR_RENT_PUBKEY} from "@solana/web3.js";
+import {LAMPORTS_PER_SOL, SYSVAR_RENT_PUBKEY , sendAndConfirmTransaction} from "@solana/web3.js";
 import * as splToken from "@solana/spl-token";
+import {TOKEN_PROGRAM_ID, MINT_SIZE} from "@solana/spl-token"; 
 import {Program, AnchorProvider, web3} from '@coral-xyz/anchor';
 import idl from "./idl.json"; 
 
@@ -36,6 +37,7 @@ const network = "http://127.0.0.1:8899"
 
 const Escrow = () => {
   const [message, setMessage] = useState(null);
+  const [extraInfo, setExtraInfo] = useState(null);
   const wallet = useWallet();
   async function getProvider() {
     const network = "http://127.0.0.1:8899";
@@ -63,20 +65,34 @@ const Escrow = () => {
 
     setMessage("Creating a new token.");
     try {
-
-      token_mint = new PublicKey();
-      const createMintInstruction = splToken.createInitializeMintInstruction(
-        token_mint,
-        6,
-        provider.wallet.publicKey,
-        provider.wallet.publicKey,
-      );
-
-      const transaction = new web3.Transaction().add(createMintInstruction);
+      let blockhash = await provider.connection.getLatestBlockhash().then((res) => res.blockhash);
+      const mint = new Keypair().publicKey;
+      const instructions = [
+        // create mint account
+        SystemProgram.createAccount({
+          fromPubkey: provider.wallet.publicKey,
+          newAccountPubkey: mint,
+          space: MINT_SIZE,
+          lamports: await splToken.getMinimumBalanceForRentExemptMint(provider.connection),
+          programId: TOKEN_PROGRAM_ID,
+        }),
+        // first I would like to get the "createAccount working"
+        // init mint account 
+        /*
+        splToken.createInitializeMintInstruction(
+          mint.publicKey,             // mint pubkey
+          6,                          // decimals
+          provider.wallet.publicKey,  // mint authority
+          provider.wallet.publicKey   // freeze authority 
+        )
+        */
+      ];
+      let transaction = new Transaction({recentBlockhash: blockhash, feePayer: provider.wallet.publicKey});
+      transaction.add(instructions)
       await provider.wallet.signTransaction(transaction);
-      const signature = await provider.connection.sendTransaction(transaction);
+      const signature = await provider.connection.sendTransaction(transaction, [provider.wallet.publicKey, mint]);
       await provider.connection.confirmTransaction(signature, opts.preflightCommitment);
-      //...
+      //..
       setMessage("Token created.");
     } catch (error) {
       setMessage(`Error creating a new token: ${error.message}`);
@@ -159,6 +175,7 @@ const Escrow = () => {
           <button onClick={initializeEscrow}>Initialize Escrow</button>
           <button onClick={retrieveFromEscrow}>Retrieve Tokens</button>
           <p>{message}</p>
+          <p>Additional info: {extraInfo}</p>
         </div>
       </div>
     );
@@ -178,4 +195,16 @@ const AppWithProvider = () => (
 
 export default AppWithProvider;
 
-
+// In case of an error: Module not found: Error: Can't resolve 'crypto'
+// Add the following callback to the webpack config file at ../node_modules/react-scripts/config/webpack.config.js
+/*
+fallback: {
+  assert: require.resolve('assert'),
+  crypto: require.resolve('crypto-browserify'),
+  http: require.resolve('stream-http'),
+  https: require.resolve('https-browserify'),
+  os: require.resolve('os-browserify/browser'),
+  stream: require.resolve('stream-browserify'),
+},
+*/
+// When needed install the needed fallback libraries by: npm install <library>
