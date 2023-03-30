@@ -38,6 +38,7 @@ const network = "http://127.0.0.1:8899"
 const Escrow = () => {
   const [message, setMessage] = useState(null);
   const [extraInfo, setExtraInfo] = useState(null);
+  const [mintAddress, setMintAddress] = useState(null);
   const wallet = useWallet();
   async function getProvider() {
     const network = "http://127.0.0.1:8899";
@@ -65,48 +66,63 @@ const Escrow = () => {
 
     setMessage("Creating a new token.");
     try {
-      let blockhash = await provider.connection.getLatestBlockhash().then((res) => res.blockhash);
-      const mint = new Keypair().publicKey;
-      const instructions = [
-        // create mint account
-        SystemProgram.createAccount({
-          fromPubkey: provider.wallet.publicKey,
-          newAccountPubkey: mint,
-          space: MINT_SIZE,
-          lamports: await splToken.getMinimumBalanceForRentExemptMint(provider.connection),
-          programId: TOKEN_PROGRAM_ID,
-        }),
-        // first I would like to get the "createAccount working"
-        // init mint account 
-        /*
-        splToken.createInitializeMintInstruction(
-          mint.publicKey,             // mint pubkey
-          6,                          // decimals
-          provider.wallet.publicKey,  // mint authority
-          provider.wallet.publicKey   // freeze authority 
-        )
-        */
-      ];
-      let transaction = new Transaction({recentBlockhash: blockhash, feePayer: provider.wallet.publicKey});
-      transaction.add(instructions)
-      await provider.wallet.signTransaction(transaction);
-      const signature = await provider.connection.sendTransaction(transaction, [provider.wallet.publicKey, mint]);
-      await provider.connection.confirmTransaction(signature, opts.preflightCommitment);
-      //..
-      setMessage("Token created.");
+        let blockhash = await provider.connection.getLatestBlockhash().then((res) => res.blockhash);
+        const mint = new Keypair();
+        // init account
+        const createMintAccountInstructionData = SystemProgram.createAccount({
+            fromPubkey: provider.wallet.publicKey,
+            newAccountPubkey: mint.publicKey,
+            space: MINT_SIZE,
+            lamports: await splToken.getMinimumBalanceForRentExemptMint(provider.connection),
+            programId: TOKEN_PROGRAM_ID,
+        });
+        const createMintAccountInstruction = new web3.TransactionInstruction({
+            keys: createMintAccountInstructionData.keys,
+            programId: createMintAccountInstructionData.programId,
+            data: createMintAccountInstructionData.data,
+        });
+
+        const initializeMintInstruction = splToken.createInitializeMintInstruction(
+            mint.publicKey,
+            6,
+            provider.wallet.publicKey,
+            provider.wallet.publicKey,
+            TOKEN_PROGRAM_ID,
+          );
+
+        let transaction = new Transaction({
+            recentBlockhash: blockhash,
+            feePayer: provider.wallet.publicKey
+        });
+        transaction.add(createMintAccountInstruction);
+        transaction.add(initializeMintInstruction);
+        await provider.wallet.signTransaction(transaction);
+        transaction.partialSign(mint); // Sign the transaction with the mint Keypair
+        const wireTransaction = transaction.serialize(); // Serialize the transaction
+        const signature = await provider.connection.sendRawTransaction(wireTransaction);
+        await provider.connection.confirmTransaction(signature, opts.preflightCommitment);
+        //..
+        let mintAccount = await splToken.getMint(provider.connection, mint.publicKey);
+        console.log(mintAccount);
+        //setTokenMint(mintAccount.address.toString())
+        setMessage("Token created.");
     } catch (error) {
-      setMessage(`Error creating a new token: ${error.message}`);
+        setMessage(`Error creating a new token: ${error.message}`);
     }
   };
 
-  const createUserAccount = async () => {
+  const createUserAccount = async (mintAddress) => {
     const provider = await getProvider();
     const program = new Program(idl, programId, provider);
 
     setMessage("Creating an user token account.");
     try {
-      // Add logic 
-
+        let ata = await splToken.createAssociatedTokenAccount(
+            provider.connection, // connection
+            provider.wallet.publicKey, // fee payer
+            mintAddress, // mint
+            provider.wallet.publicKey // owner,
+          );
       setMessage("User token account created.");
     } catch (error) {
       setMessage(`Error creating a new token account: ${error.message}`);
@@ -170,7 +186,7 @@ const Escrow = () => {
         <div>
           <button onClick={requestSOLairdrop}>Airdrop $SOL to user wallet</button>
           <button onClick={createToken}>Create a new token</button>
-          <button onClick={createUserAccount}>Create user token account</button>
+          <button onClick={createUserAccount(mintAddress)}>Create user token account</button>
           <button onClick={airdropToken}>Mint token to the account</button>
           <button onClick={initializeEscrow}>Initialize Escrow</button>
           <button onClick={retrieveFromEscrow}>Retrieve Tokens</button>
@@ -180,6 +196,15 @@ const Escrow = () => {
       </div>
     );
   }
+  /*
+
+            <textarea
+            value={mintAddress}
+            onChange={(e) => setMintAddress(e.target.value)}
+            placeholder="Enter mint address here"
+          />
+  */
+
 
 };
 
