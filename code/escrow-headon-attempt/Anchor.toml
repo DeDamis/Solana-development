@@ -8,7 +8,7 @@ escrow_headon_attempt = "3uP14PZrmaTpf8UCsvekxQuxct1Q9q4KK9qKqkPSYFLH"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "http://127.0.0.1:8899"
 wallet = "/home/damis/.config/solana/id.json"
 
 [scripts]

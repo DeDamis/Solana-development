@@ -184,11 +184,11 @@ const Escrow = () => {
   const initializeEscrow = async (mintAddress, amount) => {
     const provider = await getProvider();
     const program = new Program(idl, programId, provider);
-
+  
     setMessage("Initializing escrow...");
     try {
       const numAmount = Number(amount);
-      assert(amount > 0, 'Error: You have to provide an amount to escrow!');
+      assert(numAmount > 0, 'Error: You have to provide an amount to escrow!');
       assert(mintAddress !== null && mintAddress.length > 0, 'Error: You have to provide a mint address!');
       const mint = new PublicKey(mintAddress);
       const token_amount = new anchor.BN(numAmount);
@@ -199,7 +199,22 @@ const Escrow = () => {
       [escrow] = await PublicKey.findProgramAddress([
       anchor.utils.bytes.utf8.encode("escrow"),
       provider.wallet.publicKey.toBuffer()], program.programId)
-      /*
+      console.log('Accounts:', {
+        user: provider.wallet.publicKey.toString(),
+        tokenMint: mint.toString(),
+        userToken: ata.toString(),
+        escrow: escrow.toString(),
+        escrowedTokensTokenAccount: escrowTAKeypair.publicKey.toString(),
+        tokenProgram: splToken.TOKEN_PROGRAM_ID.toString(),
+        rent: SYSVAR_RENT_PUBKEY.toString(),
+        systemProgram: SystemProgram.programId.toString(),
+      });
+      
+      console.log('Signers:', [
+        provider.wallet.publicKey.toString(),
+        escrowTAKeypair.publicKey.toString(),
+      ]);
+      
       const tx = await program.methods.initialize(token_amount)
       .accounts({
         user: provider.wallet.publicKey,
@@ -211,9 +226,9 @@ const Escrow = () => {
         rent: SYSVAR_RENT_PUBKEY,
         systemProgram: SystemProgram.programId
       })
-      .signers([provider.wallet, escrowTAKeypair]) // I added the user Keypair as a signer
-      .rpc()
-      */
+      .signers(escrowTAKeypair)
+      .rpc();
+      
       setMessage("Escrow initialized.");
     } catch (error) {
       setMessage(`Error initializing escrow: ${error.message}`);
