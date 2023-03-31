@@ -42,6 +42,8 @@ const Escrow = () => {
   const [extraInfo, setExtraInfo] = useState(null);
   const [mintAddress, setMintAddress] = useState(null);
   const [amount, setAmount] = useState(null);
+  const [escrowTA, setEscrowTA] = useState(null);
+  const [tix, setTix] = useState(null);
   const wallet = useWallet();
   async function getProvider() {
     const network = "http://127.0.0.1:8899";
@@ -62,6 +64,24 @@ const Escrow = () => {
       setMessage(`Error airdropping $SOL: ${error.message}`);
     }
   };
+
+  const getCounterForUser = async() => {
+    const provider = await getProvider();
+    const program = new Program(idl, programId, provider);
+    const seeds = [
+      anchor.utils.bytes.utf8.encode("counter"),
+      provider.wallet.publicKey.toBuffer(),
+    ];
+    const [counterPDA] = await PublicKey.findProgramAddress(seeds, program.programId);
+    try {
+      const counter = (await program.account.userEscrowCounter.fetch(counterPDA)).counter;
+      console.log(counter);
+      setMessage(`Counter fetched = ${counter}`);
+      return counter;
+    } catch (error) {
+      setMessage(`Error fetching: ${error.message}`);
+    }
+  }
 
   const createToken = async () => {
     const provider = await getProvider();
@@ -109,6 +129,7 @@ const Escrow = () => {
         console.log(mintAccount);
         setMintAddress(mintAccount.address.toString());
         setMessage("Token created.");
+        setTix(signature)
     } catch (error) {
         setMessage(`Error creating a new token: ${error.message}`);
     }
@@ -144,6 +165,7 @@ const Escrow = () => {
         const signature = await provider.connection.sendRawTransaction(wireTransaction);
         await provider.connection.confirmTransaction(signature, opts.preflightCommitment);
       setMessage("User token account created.");
+      setTix(signature)
     } catch (error) {
       setMessage(`Error creating a new token account: ${error.message}`);
     }
@@ -176,10 +198,34 @@ const Escrow = () => {
       const signature = await provider.connection.sendRawTransaction(wireTransaction);
       await provider.connection.confirmTransaction(signature, opts.preflightCommitment);
       setMessage("Token airdropped.");
+      setTix(signature);
     } catch (error) {
       setMessage(`Error airdropping tokens: ${error.message}`);
     }
   };
+
+  const initEscrowCounter = async() => {
+    const provider = await getProvider();
+    const program = new Program(idl, programId, provider); 
+    setMessage("Initializing Escrow Counter");
+    try {
+      const seeds = [anchor.utils.bytes.utf8.encode("counter"), provider.wallet.publicKey.toBuffer()];
+      // Derive escrow address
+      const [escrowCounterPDA] = await PublicKey.findProgramAddress(seeds, program.programId);
+      console.log(escrowCounterPDA.toString());
+      const tx = await program.methods.initCounter()
+      .accounts({
+        user: provider.wallet.publicKey,
+        userEscrowCounter: escrowCounterPDA,
+        systemProgram: SystemProgram.programId.toString(),
+      })
+      .rpc();
+      setTix(tx);
+      setMessage("Escrow Counter successfully initialized");
+    } catch (error) {
+      setMessage(`Error initializing Escrow Counter: ${error.message}`);
+    }
+  }
 
   const initializeEscrow = async (mintAddress, amount) => {
     const provider = await getProvider();
@@ -194,33 +240,31 @@ const Escrow = () => {
       const token_amount = new anchor.BN(numAmount);
       let ata = await splToken.getAssociatedTokenAddress(mint, provider.wallet.publicKey); 
       const escrowTAKeypair = new Keypair();
+      // Fetch the counter from the UserEscrowCounter account
+      const counter = new anchor.BN(await getCounterForUser());
+      const counterBuffer = Buffer.from(counter.toArrayLike(Uint8Array, "le", 8));
+      const seeds = [
+        anchor.utils.bytes.utf8.encode("escrow"),
+        provider.wallet.publicKey.toBuffer(),
+        counterBuffer,
+      ];
       // Derive escrow address
-      let escrow;
-      [escrow] = await PublicKey.findProgramAddress([
-      anchor.utils.bytes.utf8.encode("escrow"),
-      provider.wallet.publicKey.toBuffer()], program.programId)
-      console.log('Accounts:', {
-        user: provider.wallet.publicKey.toString(),
-        tokenMint: mint.toString(),
-        userToken: ata.toString(),
-        escrow: escrow.toString(),
-        escrowedTokensTokenAccount: escrowTAKeypair.publicKey.toString(),
-        tokenProgram: splToken.TOKEN_PROGRAM_ID.toString(),
-        rent: SYSVAR_RENT_PUBKEY.toString(),
-        systemProgram: SystemProgram.programId.toString(),
-      });
-      
-      console.log('Signers:', [
-        provider.wallet.publicKey.toString(),
-        escrowTAKeypair.publicKey.toString(),
-      ]);
-      
+      const [escrow] = await PublicKey.findProgramAddress(seeds, program.programId);
+      // Derive counter address
+      const seedsCounter = [
+        anchor.utils.bytes.utf8.encode("counter"),
+        provider.wallet.publicKey.toBuffer(),
+      ];
+      // Derive counter account address
+      const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
+      console.log(counterPDA.toString());
       const tx = await program.methods.initialize(token_amount)
       .accounts({
         user: provider.wallet.publicKey,
         tokenMint: mint,
         userToken: ata, // user token account == ata
         escrow: escrow,
+        userEscrowCounter: counterPDA,
         escrowedTokensTokenAccount: escrowTAKeypair.publicKey,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         rent: SYSVAR_RENT_PUBKEY,
@@ -228,22 +272,51 @@ const Escrow = () => {
       })
       .signers(escrowTAKeypair)
       .rpc();
-      
+      setEscrowTA(escrowTAKeypair.publicKey);
+      setTix(tx);
       setMessage("Escrow initialized.");
     } catch (error) {
       setMessage(`Error initializing escrow: ${error.message}`);
     }
   };
 
-  const retrieveFromEscrow = async () => {
+  const retrieveFromEscrow = async (mintAddress, escrowTA) => {
     const provider = await getProvider();
     const program = new Program(idl, programId, provider);
 
     setMessage("Retrieving tokens from escrow...");
     try {
-      // Add logic to retrieve tokens from escrow
-      // ...
-
+      assert(mintAddress !== null && mintAddress.length > 0, 'Error: You have to provide a mint address!');
+      assert(escrowTA !== null && escrowTA.length > 0, 'Error: You have to provide a escrow token account address!');
+      const mint = new PublicKey(mintAddress);
+      const escrowTAaddress = new PublicKey(escrowTA.toString());
+      let ata = await splToken.getAssociatedTokenAddress(mint, provider.wallet.publicKey); 
+      // Derive escrow address
+      const counter = new anchor.BN(await getCounterForUser()).subn(1);
+      const counterBuffer = Buffer.from(counter.toArrayLike(Uint8Array, "le", 8));
+      console.log(counterBuffer.toString());
+      const seeds = [
+        anchor.utils.bytes.utf8.encode("escrow"),
+        provider.wallet.publicKey.toBuffer(),
+        counterBuffer,
+      ];
+      const [escrow] = await PublicKey.findProgramAddress(seeds, program.programId)
+      // Derive counter address
+      const seedsCounter = [anchor.utils.bytes.utf8.encode("counter"),
+                            provider.wallet.publicKey.toBuffer(),];
+      // Derive counter account address
+      const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
+      const tx = await program.methods.retrieve()
+      .accounts({
+        user: provider.wallet.publicKey,
+        escrow: escrow,
+        userEscrowCounter: counterPDA,
+        escrowedTokensTokenAccount: escrowTAaddress,
+        tokensTokenAccount: ata,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID
+      })
+      .rpc()
+      setTix(tx);
       setMessage("Tokens retrieved.");
     } catch (error) {
       setMessage(`Error retrieving tokens: ${error.message}`);
@@ -266,20 +339,29 @@ const Escrow = () => {
           <button onClick={() => createUserAccount(mintAddress)}>Create user token account</button>
           <button onClick={() => airdropToken(mintAddress)}>Mint token to the account</button>
           <button onClick={() => initializeEscrow(mintAddress, amount)}>Initialize Escrow</button>
-          <button onClick={retrieveFromEscrow}>Retrieve Tokens</button>
+          <button onClick={() => retrieveFromEscrow(mintAddress, escrowTA)}>Retrieve Tokens</button>
+          <button onClick={getCounterForUser}>Get Escrow Counter</button>
+          <button onClick={initEscrowCounter}>Init Escrow Counter</button>
           <p>{message}</p>
           <p>Additional info: {extraInfo}</p>
           <p>{mintAddress}</p>
           <textarea
-            value={mintAddress}
+            value={mintAddress === null ? '' : mintAddress}
             onChange={(e) => setMintAddress(e.target.value)}
             placeholder="Enter mint address here"
           />
           <textarea
-            value={amount}
+            value={amount === null ? '' : amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Enter amount to escrow within the program"
           />
+          <p>Escrow token account</p>
+          <textarea
+            value={escrowTA === null ? '' : escrowTA}
+            onChange={(e) => setEscrowTA(e.target.value)}
+            placeholder="Enter escrow token account address"
+          />
+          <p>tix: {tix}</p>
         </div>
       </div>
     );

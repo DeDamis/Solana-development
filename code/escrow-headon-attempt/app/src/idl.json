@@ -26,6 +26,11 @@
           "isSigner": false
         },
         {
+          "name": "userEscrowCounter",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "escrowedTokensTokenAccount",
           "isMut": true,
           "isSigner": true
@@ -67,6 +72,11 @@
           "isSigner": false
         },
         {
+          "name": "userEscrowCounter",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "escrowedTokensTokenAccount",
           "isMut": true,
           "isSigner": false
@@ -78,6 +88,27 @@
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initCounter",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "userEscrowCounter",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -113,9 +144,49 @@
           }
         ]
       }
+    },
+    {
+      "name": "UserEscrowCounter",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "publicKey"
+          },
+          {
+            "name": "counter",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "CustomError",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "InvalidUserToken"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "TransferSuccessful",
+      "msg": "TransferSuccessful"
     }
   ],
   "metadata": {
-    "address": "557jTvF33E6y2rBk9rXVbLDtSepABhpdvNRm8JssSJKi"
+    "address": "8KwgsMuDE7HLLKFF22Hnt9ghJZWskQHbZTCmwwk3vzUi"
   }
 }

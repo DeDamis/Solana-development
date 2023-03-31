@@ -2,7 +2,7 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-escrow_headon_attempt = "3uP14PZrmaTpf8UCsvekxQuxct1Q9q4KK9qKqkPSYFLH"
+escrow_headon_attempt = "8KwgsMuDE7HLLKFF22Hnt9ghJZWskQHbZTCmwwk3vzUi"
 
 [registry]
 url = "https://api.apr.dev"
