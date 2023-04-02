@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::{Mint, Token, TokenAccount, MintTo};
+use anchor_spl::associated_token::AssociatedToken;
 
 declare_id!("8KwgsMuDE7HLLKFF22Hnt9ghJZWskQHbZTCmwwk3vzUi");
 
@@ -21,6 +22,8 @@ pub mod escrow_headon_attempt {
         escrow.escrowed_tokens_token_account = ctx.accounts.escrowed_tokens_token_account.key(); // Escrow Token Account Address
         escrow.token_amount = token_amount; // Save the amount deposited to escrow
         escrow.token_mint = ctx.accounts.token_mint.key(); // Token Mint Address
+        escrow.nft_mint = ctx.accounts.nft_mint.key(); // Save NFT Mint Address
+        escrow.nft_acquired = false;
 
         msg!("Transfering tokens to Escrow token account.");
         // Transfer token to Escrow Token Account
@@ -72,6 +75,10 @@ pub mod escrow_headon_attempt {
         Ok(())
     }
 
+    pub fn get_nft(ctx: Context<GetNFT>) -> Result<()> {
+        Ok(())
+    }
+
 }
 
 #[derive(Accounts)]
@@ -82,6 +89,8 @@ pub struct Initialize<'info> {
     // Mutable reference to the User Token Account (that already existed)
     #[account(mut, constraint = user_token.mint == token_mint.key() && user_token.owner == user.key() || return err!(CustomError::InvalidUserToken))]
     user_token: Account<'info, TokenAccount>,
+    #[account(init, payer = user, mint::decimals = 0, mint::authority = user, mint::freeze_authority = user)]
+    nft_mint: Account<'info, Mint>,
     // PDA (=Program Derived Address) of seeds ["escrow", user.PK]
     #[account(init, payer = user, space = Escrow::LEN, seeds = ["escrow".as_bytes(), user.key().as_ref(), user_escrow_counter.counter.to_le_bytes().as_ref()], bump,)]
     pub escrow: Account<'info, Escrow>,
@@ -93,8 +102,12 @@ pub struct Initialize<'info> {
     // The authority is the PDA (account)
     #[account(init, payer = user, token::mint = token_mint, token::authority = escrow,)]
     escrowed_tokens_token_account: Account<'info, TokenAccount>,
+    //#[account(mut, constraint = user_nft_token_account.mint == nft_mint.key() && user_nft_token_account.owner == user.key() || return err!(CustomError::InvalidUserToken))]
+    //#[account(init, payer = user, token::mint = token_mint, token::authority = user,)]
+    //user_nft_token_account: Account<'info, TokenAccount>,
     // Additional Program/Sysvar that are needed
     token_program: Program<'info, Token>,
+    //associated_token_program: Program<'info, AssociatedToken>,
     rent: Sysvar<'info, Rent>,
     system_program: Program<'info, System>,
 }
@@ -118,6 +131,23 @@ pub struct Retrieve<'info> {
 }
 
 #[derive(Accounts)]
+pub struct GetNFT<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
+    pub nft_mint: Account<'info, Mint>,
+    #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), nft_mint.key().as_ref()], bump = escrow.bump,)]
+    pub escrow: Account<'info, Escrow>,
+    //#[account(mut, constraint = user_nft_token_account.mint == nft_mint.key() && user_nft_token_account.owner == user.key() || return err!(CustomError::InvalidUserToken))]
+    //#[account(init, payer = user, token::mint = nft_mint, token::authority = user,)]
+    #[account(init, payer = user, associated_token::mint = nft_mint, associated_token::authority = user,)]
+    pub user_nft_token_account: Account<'info, TokenAccount>,
+    system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
+    associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
 pub struct InitCounter<'info> {
     #[account(mut)]
     user: Signer<'info>,
@@ -134,6 +164,8 @@ pub struct Escrow {
     token_mint: Pubkey,
     escrowed_tokens_token_account: Pubkey,
     token_amount: u64,
+    nft_mint: Pubkey,
+    nft_acquired: bool,
 }
 
 impl Escrow {
@@ -143,7 +175,9 @@ impl Escrow {
     + 1     // bump: u8
     + 32    // token_mint: Pubkey
     + 32    // escrowed_tokens_token_account: Pubkey
-    + 8;    // token_amount: u64
+    + 8     // token_amount: u64
+    + 32    // nft_mint: Pubkey
+    + 1;    // nft_acquired: bool
 }
 
 #[account]

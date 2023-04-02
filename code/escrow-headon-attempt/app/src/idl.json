@@ -21,6 +21,11 @@
           "isSigner": false
         },
         {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "escrow",
           "isMut": true,
           "isSigner": false
@@ -114,6 +119,47 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "getNft",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "escrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userNftTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -141,6 +187,10 @@
           {
             "name": "tokenAmount",
             "type": "u64"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
           }
         ]
       }
