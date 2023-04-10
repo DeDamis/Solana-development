@@ -191,6 +191,10 @@
           {
             "name": "nftMint",
             "type": "publicKey"
+          },
+          {
+            "name": "nftAcquired",
+            "type": "bool"
           }
         ]
       }
@@ -237,6 +241,6 @@
     }
   ],
   "metadata": {
-    "address": "8KwgsMuDE7HLLKFF22Hnt9ghJZWskQHbZTCmwwk3vzUi"
+    "address": "557jTvF33E6y2rBk9rXVbLDtSepABhpdvNRm8JssSJKi"
   }
 }

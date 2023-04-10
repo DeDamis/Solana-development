@@ -233,19 +233,19 @@ const Escrow = () => {
     const program = new Program(idl, programId, provider);
     setMessage("Trying to retrieve NFT...");
     try {
-      let counter = new anchor.BN(await getCounterForUser());
-      console.log(counter);
-      counter = counter.subn(1);
-      console.log(counter);
-      /*
-      const counterBuffer = Buffer.from(counter.toArrayLike(Uint8Array, "le", 8));
+      // Derive escrow address
+      const counter = new anchor.BN(await getCounterForUser());
+      let counterAsArray = counter.toArrayLike(Uint8Array, "le", 8);
+      counterAsArray[0] = counterAsArray[0] - 1; // decrement
+      const counterBuffer = Buffer.from(counterAsArray);
+      console.log(counterBuffer.toString());
       const seeds = [
         anchor.utils.bytes.utf8.encode("escrow"),
-        provider.wallet.publicKey.toBuffer(), 
+        provider.wallet.publicKey.toBuffer(),
         counterBuffer,
       ];
-      // Derive escrow address
-      const [escrowPDA] = await PublicKey.findProgramAddress(seeds, program.programId);
+      const [escrowPDA] = await PublicKey.findProgramAddress(seeds, program.programId)
+      /*
       let nft_mint = (await program.account.escrow.fetch(escrowPDA)).nft_mint;
       let ata = await splToken.getAssociatedTokenAddress(nft_mint, provider.wallet.publicKey); 
       const tx = await program.methods.getNft()
@@ -347,8 +347,10 @@ const Escrow = () => {
       const escrowTAaddress = new PublicKey(escrowTA.toString());
       let ata = await splToken.getAssociatedTokenAddress(mint, provider.wallet.publicKey); 
       // Derive escrow address
-      const counter = new anchor.BN(await getCounterForUser()).subn(1);
-      const counterBuffer = Buffer.from(counter.toArrayLike(Uint8Array, "le", 8));
+      const counter = new anchor.BN(await getCounterForUser());
+      let counterAsArray = counter.toArrayLike(Uint8Array, "le", 8);
+      counterAsArray[0] = counterAsArray[0] - 1; // decrement
+      const counterBuffer = Buffer.from(counterAsArray);
       console.log(counterBuffer.toString());
       const seeds = [
         anchor.utils.bytes.utf8.encode("escrow"),
