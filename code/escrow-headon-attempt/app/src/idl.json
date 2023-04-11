@@ -139,6 +139,11 @@
           "isSigner": false
         },
         {
+          "name": "userEscrowCounter",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "userNftTokenAccount",
           "isMut": true,
           "isSigner": false
@@ -210,6 +215,10 @@
           },
           {
             "name": "counter",
+            "type": "u64"
+          },
+          {
+            "name": "previousCounter",
             "type": "u64"
           },
           {

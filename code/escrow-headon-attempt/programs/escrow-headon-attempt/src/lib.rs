@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount, MintTo};
 use anchor_spl::associated_token::AssociatedToken;
 
+// Security issue: The authority of the NFT minting carries the user, so the user is able to mint the NFT within a different environment
 declare_id!("557jTvF33E6y2rBk9rXVbLDtSepABhpdvNRm8JssSJKi");
 
 #[program]
@@ -28,7 +29,6 @@ pub mod escrow_headon_attempt {
 
         msg!("Transfering tokens to Escrow token account.");
         // Transfer token to Escrow Token Account
-        /*
         anchor_spl::token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -37,9 +37,8 @@ pub mod escrow_headon_attempt {
                     to: ctx.accounts.escrowed_tokens_token_account.to_account_info(),
                     authority: ctx.accounts.user.to_account_info(),
                 },
-            ), token_amount, )?;
-        */
-        msg!("The operation was successful");
+            ), token_amount)?;
+        msg!("The transfer was successful");
         Ok(())
     }
 
@@ -52,7 +51,7 @@ pub mod escrow_headon_attempt {
                 to: ctx.accounts.tokens_token_account.to_account_info(),
                 authority: ctx.accounts.escrow.to_account_info(),
              },
-             &[&["escrow".as_bytes(), ctx.accounts.escrow.authority.as_ref(), &[ctx.accounts.escrow.bump]]],
+             &[&["escrow".as_bytes(), ctx.accounts.user.key().as_ref(), ctx.accounts.user_escrow_counter.previous_counter.to_le_bytes().as_ref() , &[ctx.accounts.escrow.bump]]],
             ),
             ctx.accounts.escrowed_tokens_token_account.amount,
         )?;
@@ -63,7 +62,7 @@ pub mod escrow_headon_attempt {
                 destination: ctx.accounts.user.to_account_info(),
                 authority: ctx.accounts.escrow.to_account_info(),
             },
-            &[&["escrow".as_bytes(), ctx.accounts.escrow.authority.as_ref(), &[ctx.accounts.escrow.bump]]],
+            &[&["escrow".as_bytes(), ctx.accounts.user.key().as_ref(), ctx.accounts.user_escrow_counter.previous_counter.to_le_bytes().as_ref() , &[ctx.accounts.escrow.bump]]],
         ))?;
         Ok(())
     }
@@ -72,11 +71,23 @@ pub mod escrow_headon_attempt {
         let counter_account = &mut ctx.accounts.user_escrow_counter;
         counter_account.user = ctx.accounts.user.key();
         counter_account.counter = 0;
+        counter_account.previous_counter = 0;
         counter_account.bump = *ctx.bumps.get("user_escrow_counter").unwrap();
         Ok(())
     }
 
     pub fn get_nft(ctx: Context<GetNFT>) -> Result<()> {
+        assert!(ctx.accounts.escrow.nft_acquired == false, "NFT already acquired!");
+        // Mint the NFT to the user's wallet
+        msg!("Minting a NFT to associated token account...");
+        let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(),
+        anchor_spl::token::MintTo{
+            mint: ctx.accounts.nft_mint.to_account_info(),
+            to: ctx.accounts.user_nft_token_account.to_account_info(),
+            authority: ctx.accounts.user.to_account_info(),
+        },);
+        anchor_spl::token::mint_to(cpi_context, 1)?;
+        ctx.accounts.escrow.nft_acquired = true;
         Ok(())
     }
 
@@ -117,7 +128,7 @@ pub struct Initialize<'info> {
 pub struct Retrieve<'info> {
     pub user: Signer<'info>,
     // PDA Escrow Data account (Reference)
-    #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.counter.to_le_bytes().as_ref()], bump = escrow.bump,)]
+    #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.previous_counter.to_le_bytes().as_ref()], bump = escrow.bump,)]
     pub escrow: Account<'info, Escrow>,
     // Mutable reference to the User Escrow Addresses counter
     #[account(mut, seeds = [b"counter", user.key().as_ref()], bump = user_escrow_counter.bump)]
@@ -137,7 +148,7 @@ pub struct GetNFT<'info> {
     pub user: Signer<'info>,
     #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
     pub nft_mint: Account<'info, Mint>,
-    #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.counter.to_le_bytes().as_ref()], bump = escrow.bump,)]
+    #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.previous_counter.to_le_bytes().as_ref()], bump = escrow.bump,)]
     pub escrow: Account<'info, Escrow>,
     // Mutable reference to the User Escrow Addresses counter
     #[account(mut, seeds = [b"counter", user.key().as_ref()], bump = user_escrow_counter.bump)]
@@ -207,14 +218,15 @@ pub enum MyError {
     #[msg("TransferSuccessful")]
     TransferSuccessful
 }
-/*
-if condition {
-    return err!(MyError::TransferSuccessful);
-}
- */
 
  #[error_code]
  pub enum CustomError {
      #[msg("Error: Provided user_token does not meet the constraints.")]
      InvalidUserToken,
  }
+
+ /*
+if condition {
+    return err!(MyError::TransferSuccessful);
+}
+ */
