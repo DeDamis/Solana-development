@@ -77,6 +77,24 @@ const Escrow = () => {
     try {
       const counter = (await program.account.userEscrowCounter.fetch(counterPDA)).counter;
       console.log(counter);
+      setMessage(`PreviousCounter fetched = ${counter}`);
+      return counter;
+    } catch (error) {
+      setMessage(`Error fetching: ${error.message}`);
+    }
+  }
+
+  const getPreviousCounterForUser = async() => {
+    const provider = await getProvider();
+    const program = new Program(idl, programId, provider);
+    const seeds = [
+      anchor.utils.bytes.utf8.encode("counter"),
+      provider.wallet.publicKey.toBuffer(),
+    ];
+    const [counterPDA] = await PublicKey.findProgramAddress(seeds, program.programId);
+    try {
+      const counter = (await program.account.userEscrowCounter.fetch(counterPDA)).previousCounter;
+      console.log(counter);
       setMessage(`Counter fetched = ${counter}`);
       return counter;
     } catch (error) {
@@ -235,24 +253,39 @@ const Escrow = () => {
     try {
       // Derive escrow address
       const counter = new anchor.BN(await getCounterForUser());
+      const previousCounter = new anchor.BN(await getPreviousCounterForUser());
+      console.log("retrieved counter: "+counter.toString());
       let counterAsArray = counter.toArrayLike(Uint8Array, "le", 8);
+      let counterBuffer = Buffer.from(counter.toArrayLike(Uint8Array, "le", 8));
+      console.log("counterBuffer before decrementing: "+counterBuffer.toString());
+      console.log("counterAsArray: "+counterAsArray.toString());
       counterAsArray[0] = counterAsArray[0] - 1; // decrement
-      const counterBuffer = Buffer.from(counterAsArray);
-      console.log(counterBuffer.toString());
+      console.log("counterAsArray after decrement: "+counterAsArray.toString());
+      counterBuffer = Buffer.from(counterAsArray);
+      console.log("counterBuffer after decrementing: "+counterBuffer.toString());
       const seeds = [
         anchor.utils.bytes.utf8.encode("escrow"),
         provider.wallet.publicKey.toBuffer(),
         counterBuffer,
       ];
       const [escrowPDA] = await PublicKey.findProgramAddress(seeds, program.programId)
-      /*
-      let nft_mint = (await program.account.escrow.fetch(escrowPDA)).nft_mint;
+      console.log("escrowPDA (in retrievation)="+escrowPDA.toString())
+      let nft_mint = (await program.account.escrow.fetch(escrowPDA)).nftMint;
+      console.log("nft_mint:"+nft_mint.toString());
       let ata = await splToken.getAssociatedTokenAddress(nft_mint, provider.wallet.publicKey); 
+      // Derive counter address
+      const seedsCounter = [
+        anchor.utils.bytes.utf8.encode("counter"),
+        provider.wallet.publicKey.toBuffer(),
+      ];
+      // Derive counter account address
+      const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
       const tx = await program.methods.getNft()
       .accounts({
           user: provider.wallet.publicKey,
           nftMint: nft_mint,
           escrow: escrowPDA,
+          userEscrowCounter: counterPDA,
           userNftTokenAccount: ata,
           systemProgram: SystemProgram.programId.toString(),
           tokenProgram: splToken.TOKEN_PROGRAM_ID,
@@ -262,7 +295,6 @@ const Escrow = () => {
         skipPreflight:true
       });
       setTix(tx);
-      */
       setMessage("NFT Retrieved.");
     } catch (error) {
       setMessage(`Error retrieving NFT: ${error.message}`);
@@ -288,7 +320,7 @@ const Escrow = () => {
       const escrowTAKeypair = new Keypair();
       // Fetch the counter from the UserEscrowCounter account
       const counter = new anchor.BN(await getCounterForUser());
-      console.log(counter);
+      //console.log(counter);
       const counterBuffer = Buffer.from(counter.toArrayLike(Uint8Array, "le", 8));
       const seeds = [
         anchor.utils.bytes.utf8.encode("escrow"),
@@ -298,6 +330,7 @@ const Escrow = () => {
       ];
       // Derive escrow address
       const [escrow] = await PublicKey.findProgramAddress(seeds, program.programId);
+      console.log("escrowPDA (in initialization)="+escrow.toString());
       // Derive counter address
       const seedsCounter = [
         anchor.utils.bytes.utf8.encode("counter"),

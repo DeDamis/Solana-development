@@ -12,6 +12,7 @@ pub mod escrow_headon_attempt {
         msg!("Assigning values.");
         // Get count of user escrow addresses and increment it
         let _counter = ctx.accounts.user_escrow_counter.counter;
+        ctx.accounts.user_escrow_counter.previous_counter = ctx.accounts.user_escrow_counter.counter;
         ctx.accounts.user_escrow_counter.counter += 1;
         // Init accounts
         let escrow = &mut ctx.accounts.escrow; // Escrow context account
@@ -136,8 +137,11 @@ pub struct GetNFT<'info> {
     pub user: Signer<'info>,
     #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
     pub nft_mint: Account<'info, Mint>,
-    #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), nft_mint.key().as_ref()], bump = escrow.bump,)]
+    #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.counter.to_le_bytes().as_ref()], bump = escrow.bump,)]
     pub escrow: Account<'info, Escrow>,
+    // Mutable reference to the User Escrow Addresses counter
+    #[account(mut, seeds = [b"counter", user.key().as_ref()], bump = user_escrow_counter.bump)]
+    pub user_escrow_counter: Account<'info, UserEscrowCounter>,
     //#[account(mut, constraint = user_nft_token_account.mint == nft_mint.key() && user_nft_token_account.owner == user.key() || return err!(CustomError::InvalidUserToken))]
     //#[account(init, payer = user, token::mint = nft_mint, token::authority = user,)]
     #[account(init, payer = user, associated_token::mint = nft_mint, associated_token::authority = user,)]
@@ -184,6 +188,7 @@ impl Escrow {
 pub struct UserEscrowCounter {
     pub user: Pubkey,
     pub counter: u64,
+    pub previous_counter: u64,
     pub bump: u8,
 }
 
@@ -192,6 +197,7 @@ impl UserEscrowCounter {
     8 // discriminator
     + 32 // user: Pubkey
     + 8 // counter: u64
+    + 8 // previous_counter: u64
     + 1; // bump: u8
 }
 
