@@ -1,8 +1,10 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount, MintTo};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
+use mpl_token_metadata::instruction as mpl_instruction;
 
 // Security issue: The authority of the NFT minting carries the user, so the user is able to mint the NFT within a different environment
+// TODO: cleanup escrow data account?
 declare_id!("557jTvF33E6y2rBk9rXVbLDtSepABhpdvNRm8JssSJKi");
 
 #[program]
@@ -43,6 +45,16 @@ pub mod escrow_headon_attempt {
     }
 
     pub fn retrieve(ctx: Context<Retrieve>) -> Result<()> {
+        // burn the NFT
+        anchor_spl::token::burn(
+            CpiContext::new(ctx.accounts.token_program.to_account_info(),
+             anchor_spl::token::Burn {
+                mint: ctx.accounts.nft_mint.to_account_info(),
+                from: ctx.accounts.user_nft_token_account.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(), 
+             },),
+            1, // one NFT
+        )?;
         // transfer escrowed tokens back to user
         anchor_spl::token::transfer(
             CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(),
@@ -127,6 +139,10 @@ pub struct Initialize<'info> {
 #[derive(Accounts)]
 pub struct Retrieve<'info> {
     pub user: Signer<'info>,
+    #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
+    pub nft_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_nft_token_account.mint == escrow.nft_mint)]
+    pub user_nft_token_account: Account<'info, TokenAccount>,
     // PDA Escrow Data account (Reference)
     #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.previous_counter.to_le_bytes().as_ref()], bump = escrow.bump,)]
     pub escrow: Account<'info, Escrow>,
@@ -148,6 +164,8 @@ pub struct GetNFT<'info> {
     pub user: Signer<'info>,
     #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
     pub nft_mint: Account<'info, Mint>,
+    //#[account(mut)]
+    //pub metadata_account: UncheckedAccount<'info>,
     #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.previous_counter.to_le_bytes().as_ref()], bump = escrow.bump,)]
     pub escrow: Account<'info, Escrow>,
     // Mutable reference to the User Escrow Addresses counter

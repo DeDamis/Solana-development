@@ -72,6 +72,16 @@
           "isSigner": true
         },
         {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userNftTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "escrow",
           "isMut": true,
           "isSigner": false

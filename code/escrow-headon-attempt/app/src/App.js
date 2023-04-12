@@ -380,9 +380,14 @@ const Escrow = () => {
                             provider.wallet.publicKey.toBuffer(),];
       // Derive counter account address
       const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
+      // Get user's NFT token account 
+      let nft_mint = (await program.account.escrow.fetch(escrowPDA)).nftMint;
+      let nft_ata = await splToken.getAssociatedTokenAddress(nft_mint, provider.wallet.publicKey); 
       const tx = await program.methods.retrieve()
       .accounts({
         user: provider.wallet.publicKey,
+        nftMint: nft_mint,
+        userNftTokenAccount: nft_ata,
         escrow: escrowPDA,
         userEscrowCounter: counterPDA,
         escrowedTokensTokenAccount: escrowTAaddress,
