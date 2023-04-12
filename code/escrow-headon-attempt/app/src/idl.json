@@ -3,6 +3,27 @@
   "name": "escrow_headon_attempt",
   "instructions": [
     {
+      "name": "initCounter",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "userEscrowCounter",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initialize",
       "accounts": [
         {
@@ -64,73 +85,6 @@
       ]
     },
     {
-      "name": "retrieve",
-      "accounts": [
-        {
-          "name": "user",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "nftMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userNftTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "escrow",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userEscrowCounter",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "escrowedTokensTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokensTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "initCounter",
-      "accounts": [
-        {
-          "name": "user",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "userEscrowCounter",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "getNft",
       "accounts": [
         {
@@ -170,6 +124,52 @@
         },
         {
           "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "retrieve",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userNftTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "escrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userEscrowCounter",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "escrowedTokensTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokensTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -215,6 +215,22 @@
       }
     },
     {
+      "name": "TokenMetadata",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tokenTitle",
+            "type": "string"
+          },
+          {
+            "name": "escrowNumber",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "UserEscrowCounter",
       "type": {
         "kind": "struct",
@@ -239,24 +255,11 @@
       }
     }
   ],
-  "types": [
-    {
-      "name": "CustomError",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "InvalidUserToken"
-          }
-        ]
-      }
-    }
-  ],
   "errors": [
     {
       "code": 6000,
-      "name": "TransferSuccessful",
-      "msg": "TransferSuccessful"
+      "name": "InvalidUserToken",
+      "msg": "Error: Provided user_token does not meet the constraints."
     }
   ],
   "metadata": {

@@ -4,13 +4,14 @@ import './App.css';
 import {useState} from "react";
 import {Connection, PublicKey, Transaction} from '@solana/web3.js';
 
-import {LAMPORTS_PER_SOL, SYSVAR_RENT_PUBKEY , sendAndConfirmTransaction} from "@solana/web3.js";
+import {LAMPORTS_PER_SOL, SYSVAR_RENT_PUBKEY , sendAndConfirmTransaction, clusterApiUrl} from "@solana/web3.js";
 import * as splToken from "@solana/spl-token";
 import {TOKEN_PROGRAM_ID, MINT_SIZE, ASSOCIATED_TOKEN_PROGRAM_ID} from "@solana/spl-token"; 
 import {Program, AnchorProvider, web3} from '@coral-xyz/anchor';
 import * as anchor from "@coral-xyz/anchor";
 import idl from "./idl.json";
 import assert from 'assert';
+import {PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID} from '@metaplex-foundation/mpl-token-metadata';
 
 
 
@@ -36,6 +37,7 @@ const opts = {
 }
 
 const network = "http://127.0.0.1:8899"
+//const network = clusterApiUrl("devnet");
 
 const Escrow = () => {
   const [message, setMessage] = useState(null);
@@ -45,6 +47,7 @@ const Escrow = () => {
   const [escrowTA, setEscrowTA] = useState(null);
   const [tix, setTix] = useState(null);
   const [nftMint, setNFTmint] = useState(null);
+  const [nftAddress, setNFTaddress] = useState(null);
   const wallet = useWallet();
   async function getProvider() {
     const network = "http://127.0.0.1:8899";
@@ -361,13 +364,16 @@ const Escrow = () => {
 
     setMessage("Retrieving tokens from escrow...");
     try {
-      assert(mintAddress !== null && mintAddress.length > 0, 'Error: You have to provide a mint address!');
+      assert(mintAddress !== null && mintAddress.length > 0, 'Error: You have to provide the nft mint address!');
       //assert(escrowTA !== null && escrowTA.length > 0, 'Error: You have to provide a escrow token account address!');
       const mint = new PublicKey(mintAddress);
       //const escrowTAaddress = new PublicKey(escrowTA.toString());
       let ata = await splToken.getAssociatedTokenAddress(mint, provider.wallet.publicKey); 
       // retrieve counter and get escrow PDA
       const previousCounter = new anchor.BN(await getPreviousCounterForUser());
+
+
+
       let previousCounterBuffer = Buffer.from(previousCounter.toArrayLike(Uint8Array, "le", 8));
       const seeds = [
         anchor.utils.bytes.utf8.encode("escrow"),
@@ -445,6 +451,11 @@ const Escrow = () => {
           />
           <p>tix: {tix}</p>
           <p>NFT mint address: {nftMint}</p>
+          <textarea
+            value={nftAddress === null ? '' : nftAddress}
+            onChange={(e) => setNFTaddress(e.target.value)}
+            placeholder="NFT mint address to retrieve"
+          />
         </div>
       </div>
     );
