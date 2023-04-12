@@ -1,15 +1,27 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
-use mpl_token_metadata::instruction as mpl_instruction;
 
-// Security issue: The authority of the NFT minting carries the user, so the user is able to mint the NFT within a different environment
 // TODO: cleanup escrow data account?
+// As of 12. 04. 2023, this program does not delete data accounts (escrow, token metadata and the escrow counter) after asset retrieval
+
 declare_id!("557jTvF33E6y2rBk9rXVbLDtSepABhpdvNRm8JssSJKi");
 
 #[program]
 pub mod escrow_headon_attempt {
     use super::*;
+
+    // the ordering of the following procedures (functions) in this source code is simillar
+    // to the expected application workflow (counter initialization, escrow deposit, nft reception and at last asset retrieval)
+
+    pub fn init_counter(ctx: Context<InitCounter>) -> Result<()> {
+        let counter_account = &mut ctx.accounts.user_escrow_counter;
+        counter_account.user = ctx.accounts.user.key();
+        counter_account.counter = 0;
+        counter_account.previous_counter = 0;
+        counter_account.bump = *ctx.bumps.get("user_escrow_counter").unwrap();
+        Ok(())
+    }
 
     pub fn initialize(ctx: Context<Initialize>, token_amount: u64) -> Result<()> {
         msg!("Assigning values.");
@@ -41,6 +53,22 @@ pub mod escrow_headon_attempt {
                 },
             ), token_amount)?;
         msg!("The transfer was successful");
+        Ok(())
+    }
+
+    pub fn get_nft(ctx: Context<GetNFT>) -> Result<()> {
+        assert!(ctx.accounts.escrow.nft_acquired == false, "NFT already acquired!");
+
+        // Mint the NFT to the user's wallet
+        msg!("Minting a NFT to associated token account...");
+        let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(),
+        anchor_spl::token::MintTo{
+            mint: ctx.accounts.nft_mint.to_account_info(),
+            to: ctx.accounts.user_nft_token_account.to_account_info(),
+            authority: ctx.accounts.user.to_account_info(),
+        },);
+        anchor_spl::token::mint_to(cpi_context, 1)?;
+        ctx.accounts.escrow.nft_acquired = true;
         Ok(())
     }
 
@@ -79,30 +107,18 @@ pub mod escrow_headon_attempt {
         Ok(())
     }
 
-    pub fn init_counter(ctx: Context<InitCounter>) -> Result<()> {
-        let counter_account = &mut ctx.accounts.user_escrow_counter;
-        counter_account.user = ctx.accounts.user.key();
-        counter_account.counter = 0;
-        counter_account.previous_counter = 0;
-        counter_account.bump = *ctx.bumps.get("user_escrow_counter").unwrap();
-        Ok(())
-    }
+}
 
-    pub fn get_nft(ctx: Context<GetNFT>) -> Result<()> {
-        assert!(ctx.accounts.escrow.nft_acquired == false, "NFT already acquired!");
-        // Mint the NFT to the user's wallet
-        msg!("Minting a NFT to associated token account...");
-        let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(),
-        anchor_spl::token::MintTo{
-            mint: ctx.accounts.nft_mint.to_account_info(),
-            to: ctx.accounts.user_nft_token_account.to_account_info(),
-            authority: ctx.accounts.user.to_account_info(),
-        },);
-        anchor_spl::token::mint_to(cpi_context, 1)?;
-        ctx.accounts.escrow.nft_acquired = true;
-        Ok(())
-    }
+// Context (de)serialization structures
 
+#[derive(Accounts)]
+pub struct InitCounter<'info> {
+    #[account(mut)]
+    user: Signer<'info>,
+    // PDA (=Program Derived Address) of seeds ["counter", user.PK]
+    #[account(init, payer = user, space = UserEscrowCounter::LEN, seeds = [b"counter", user.key().as_ref()], bump)]
+    pub user_escrow_counter: Account<'info, UserEscrowCounter>,
+    system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -137,6 +153,23 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
+pub struct GetNFT<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
+    pub nft_mint: Account<'info, Mint>,
+    #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.previous_counter.to_le_bytes().as_ref()], bump = escrow.bump,)]
+    pub escrow: Account<'info, Escrow>,
+    #[account(mut, seeds = [b"counter", user.key().as_ref()], bump = user_escrow_counter.bump)]
+    pub user_escrow_counter: Account<'info, UserEscrowCounter>,
+    #[account(init, payer = user, associated_token::mint = nft_mint, associated_token::authority = user,)]
+    pub user_nft_token_account: Account<'info, TokenAccount>,
+    system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
+    associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
 pub struct Retrieve<'info> {
     pub user: Signer<'info>,
     #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
@@ -158,37 +191,7 @@ pub struct Retrieve<'info> {
     token_program: Program<'info, Token>,
 }
 
-#[derive(Accounts)]
-pub struct GetNFT<'info> {
-    #[account(mut)]
-    pub user: Signer<'info>,
-    #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
-    pub nft_mint: Account<'info, Mint>,
-    //#[account(mut)]
-    //pub metadata_account: UncheckedAccount<'info>,
-    #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.previous_counter.to_le_bytes().as_ref()], bump = escrow.bump,)]
-    pub escrow: Account<'info, Escrow>,
-    // Mutable reference to the User Escrow Addresses counter
-    #[account(mut, seeds = [b"counter", user.key().as_ref()], bump = user_escrow_counter.bump)]
-    pub user_escrow_counter: Account<'info, UserEscrowCounter>,
-    //#[account(mut, constraint = user_nft_token_account.mint == nft_mint.key() && user_nft_token_account.owner == user.key() || return err!(CustomError::InvalidUserToken))]
-    //#[account(init, payer = user, token::mint = nft_mint, token::authority = user,)]
-    #[account(init, payer = user, associated_token::mint = nft_mint, associated_token::authority = user,)]
-    pub user_nft_token_account: Account<'info, TokenAccount>,
-    system_program: Program<'info, System>,
-    token_program: Program<'info, Token>,
-    associated_token_program: Program<'info, AssociatedToken>,
-}
-
-#[derive(Accounts)]
-pub struct InitCounter<'info> {
-    #[account(mut)]
-    user: Signer<'info>,
-    // PDA (=Program Derived Address) of seeds ["counter", user.PK]
-    #[account(init, payer = user, space = UserEscrowCounter::LEN, seeds = [b"counter", user.key().as_ref()], bump)]
-    pub user_escrow_counter: Account<'info, UserEscrowCounter>,
-    system_program: Program<'info, System>,
-}
+// Data structures
 
 #[account]
 pub struct Escrow {
@@ -200,6 +203,23 @@ pub struct Escrow {
     nft_mint: Pubkey,
     nft_acquired: bool,
 }
+
+#[account]
+pub struct TokenMetadata {
+    token_title: String,
+    escrow_number: u64,
+}
+
+#[account]
+pub struct UserEscrowCounter {
+    pub user: Pubkey,
+    pub counter: u64,
+    pub previous_counter: u64,
+    pub bump: u8,
+}
+
+
+// Data structures sizing
 
 impl Escrow {
     pub const LEN: usize =
@@ -213,12 +233,11 @@ impl Escrow {
     + 1;    // nft_acquired: bool
 }
 
-#[account]
-pub struct UserEscrowCounter {
-    pub user: Pubkey,
-    pub counter: u64,
-    pub previous_counter: u64,
-    pub bump: u8,
+impl TokenMetadata {
+    pub const LEN: usize =
+    8       // discriminator
+    + 100   // token_title: String (limited to "100" characters)
+    + 8;    // escrow_number: u64
 }
 
 impl UserEscrowCounter {
@@ -230,6 +249,72 @@ impl UserEscrowCounter {
     + 1; // bump: u8
 }
 
+#[error_code]
+pub enum CustomError {
+    #[msg("Error: Provided user_token does not meet the constraints.")]
+    InvalidUserToken,
+}
+
+/*
+-----ARCHIVE-----
+Metaplex token metadata account
+ - I have explored the possibility of using the standardized metadata account for storing the NFT metadata,
+   however I have found it added an extra unneccessary tidious work that would slow down the development pace
+[imports]
+    use anchor_lang::solana_program::program::invoke;
+    use mpl_token_metadata::{ID as TOKEN_METADATA_ID, instruction as mpl_instruction};
+[context structures]
+    #[derive(Accounts)]
+    pub struct GetNFT<'info> {
+        /// rest of the code
+        /// CHECK: This account does not exist and will be created just now
+        #[account(mut)]
+        pub metadata_account: UncheckedAccount<'info>,
+        /// CHECK: Metaplex will check this
+        token_metadata_program: UncheckedAccount<'info>,
+        rent: Sysvar<'info, Rent>,
+    }
+ [procedure impl]
+    let token_symbol = String::from("BKEY");
+    let token_uri = String::from("");
+    msg!("Creating metadata account...");
+    msg!("Metadata account address: {}", &ctx.accounts.metadata_account.key());
+    invoke(
+        &mpl_instruction::create_metadata_accounts_v3(
+            TOKEN_METADATA_ID,                              // Program ID (the Token Metadata Program)
+            ctx.accounts.metadata_account.key(),            // Metadata account
+            ctx.accounts.nft_mint.key(),                    // Mint account
+            ctx.accounts.user.key(),                        // Mint authority
+            ctx.accounts.user.key(),                        // Payer
+            ctx.accounts.user.key(),                        // Update authority
+            token_title,                                    // Name
+            token_symbol,                                   // Symbol
+            token_uri,                                      // URI
+            None,                                           // Creators
+            0,                                              // Seller fee basis points
+            true,                                           // Update authority is signer
+            false,                                          // Is mutable
+            None,                                           // Collection
+            None,                                           // Uses
+            None,                                           // Collection Details
+        ),
+        &[
+            ctx.accounts.metadata_account.to_account_info(),
+            ctx.accounts.nft_mint.to_account_info(),
+            ctx.accounts.user.to_account_info(),
+            ctx.accounts.user.to_account_info(),
+            ctx.accounts.user.to_account_info(),
+            ctx.accounts.rent.to_account_info(),
+        ]
+    )?;
+    msg!("Metadata account created successfully.");
+*/
+
+/*
+-----TEMPLATES-----
+if condition {
+    return err!(MyError::TransferSuccessful);
+}
 
 #[error_code]
 pub enum MyError {
@@ -237,14 +322,4 @@ pub enum MyError {
     TransferSuccessful
 }
 
- #[error_code]
- pub enum CustomError {
-     #[msg("Error: Provided user_token does not meet the constraints.")]
-     InvalidUserToken,
- }
-
- /*
-if condition {
-    return err!(MyError::TransferSuccessful);
-}
  */
