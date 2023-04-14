@@ -158,6 +158,9 @@ pub struct GetNFT<'info> {
     pub user: Signer<'info>,
     #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
     pub nft_mint: Account<'info, Mint>,
+    // PDA (=Program Derived Address) of seeds ["counter", user.PK]
+    #[account(init, payer = user, space = TokenMetadata::LEN, seeds = [b"metadata", token_metadata_program.key().as_ref(), nft_mint.key().as_ref()], bump)]
+    pub metadata_account: Account<'info, TokenMetadata>,
     #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.previous_counter.to_le_bytes().as_ref()], bump = escrow.bump,)]
     pub escrow: Account<'info, Escrow>,
     #[account(mut, seeds = [b"counter", user.key().as_ref()], bump = user_escrow_counter.bump)]
@@ -167,6 +170,8 @@ pub struct GetNFT<'info> {
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     associated_token_program: Program<'info, AssociatedToken>,
+    /// CHECK: Metaplex will check this
+    token_metadata_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -208,6 +213,8 @@ pub struct Escrow {
 pub struct TokenMetadata {
     token_title: String,
     escrow_number: u64,
+    escrowed_token_mint: Pubkey,
+    escrowed_amount: u64,
 }
 
 #[account]
@@ -237,7 +244,9 @@ impl TokenMetadata {
     pub const LEN: usize =
     8       // discriminator
     + 100   // token_title: String (limited to "100" characters)
-    + 8;    // escrow_number: u64
+    + 8     // escrow_number: u64
+    + 32    // escrowed_token_mint: Pubkey
+    + 8;    // escrowed_amount: u64
 }
 
 impl UserEscrowCounter {
