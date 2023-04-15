@@ -62,7 +62,7 @@ pub mod escrow_headon_attempt {
         Ok(())
     }
 
-    pub fn initialize_sol_escrow(_ctx: Context<InitializeSol>, _token_amount: u64) -> Result<()> {
+    pub fn initialize_sol_escrow(_ctx: Context<InitializeSolEscrow>, _token_amount: u64) -> Result<()> {
         Ok(())
     }
 
@@ -73,29 +73,32 @@ pub mod escrow_headon_attempt {
         let escrow = &mut ctx.accounts.escrow;
         let user_escrow_counter = &ctx.accounts.user_escrow_counter;
         let metadata_account = &mut ctx.accounts.metadata_account;
+        let nft_mint = & ctx.accounts.nft_mint;
 
-        // Set NFT metadata
+        msg!("Initializing NFT metadata account.");
         metadata_account.bump = *ctx.bumps.get("metadata_account").unwrap();
         metadata_account.token_title = String::from("Deposit Box Key");
         metadata_account.escrow_number = user_escrow_counter.previous_counter;
         metadata_account.escrowed_token_mint = escrow.token_mint;
         metadata_account.escrowed_amount = escrow.token_amount;
 
-        msg!("escrow account: {}", escrow.key());
-        msg!("NFT mint key: {}", ctx.accounts.nft_mint.key());
-        msg!("Metadata account address: {}", metadata_account.key());
+        msg!("NFT mint: {}", nft_mint.key());
+        msg!("NFT metadata account address: {}", metadata_account.key());
 
-        // Mint the NFT to the user's wallet
         msg!("Minting a NFT to user's associated token account...");
-        let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(),
-        anchor_spl::token::MintTo{
-            mint: ctx.accounts.nft_mint.to_account_info(),
-            to: ctx.accounts.user_nft_token_account.to_account_info(),
-            authority: ctx.accounts.user.to_account_info(),
-        },);
-        anchor_spl::token::mint_to(cpi_context, 1)?;
+        let user_nft_ata = & ctx.accounts.user_nft_ata;
+        let user = & ctx.accounts.user;
+        anchor_spl::token::mint_to(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                anchor_spl::token::MintTo {
+                    mint: nft_mint.to_account_info(),
+                    to: user_nft_ata.to_account_info(),
+                    authority: user.to_account_info(),
+                },
+            ), 1)?;
         msg!("Minting was successful.");
-        // Toggle nft_acquired flag in the escrow account
+        msg!("Checkmarking NFT issuance.");
         escrow.nft_acquired = true;
         Ok(())
     }
@@ -109,7 +112,7 @@ pub mod escrow_headon_attempt {
         let escrow_token_ata = & ctx.accounts.escrow_token_ata;
         let user_token_ata = & ctx.accounts.user_token_ata;
 
-        // burn the NFT
+        msg!("Burning the NFT.");
         anchor_spl::token::burn(
             CpiContext::new(ctx.accounts.token_program.to_account_info(),
              anchor_spl::token::Burn {
@@ -119,7 +122,9 @@ pub mod escrow_headon_attempt {
              },),
             1, // one NFT
         )?;
-        // transfer escrowed tokens back to user
+        msg!("Burn successful.");
+
+        msg!("Transfering escrowed tokens back to the user.");
         anchor_spl::token::transfer(
             CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(),
              anchor_spl::token::Transfer {
@@ -127,10 +132,13 @@ pub mod escrow_headon_attempt {
                 to: user_token_ata.to_account_info(),
                 authority: escrow.to_account_info(),
              },
-             &[&["escrow".as_bytes(), ctx.accounts.user.key().as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref(), &[ctx.accounts.escrow.bump]]],
+             &[&["escrow".as_bytes(), user.key().as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref(), &[escrow.bump]]],
             ),
             escrow.token_amount
         )?;
+        msg!("Transfer was successful.");
+
+        msg!("Closing the escrow token account (ata).");
         anchor_spl::token::close_account(
             CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(),
             anchor_spl::token::CloseAccount {
@@ -138,8 +146,9 @@ pub mod escrow_headon_attempt {
                 destination: user.to_account_info(),
                 authority: escrow.to_account_info(),
             },
-            &[&["escrow".as_bytes(), ctx.accounts.user.key().as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref(), &[ctx.accounts.escrow.bump]]],
+            &[&["escrow".as_bytes(), user.key().as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref(), &[escrow.bump]]],
         ))?;
+        msg!("Escrow token account (ata) was successfuly closed.");
         Ok(())
     }
 }
@@ -188,7 +197,7 @@ pub struct InitializeTokenEscrow<'info> {
 }
 
 #[derive(Accounts)]
-pub struct InitializeSol<'info> {
+pub struct InitializeSolEscrow<'info> {
     #[account(mut)]
     user: Signer<'info>,
     #[account(init, payer = user, mint::decimals = 0, mint::authority = user, mint::freeze_authority = user)]
@@ -218,7 +227,7 @@ pub struct GetNFT<'info> {
     #[account(mut, seeds = [b"counter", user.key().as_ref()], bump = user_escrow_counter.bump)]
     pub user_escrow_counter: Account<'info, UserEscrowCounter>,
     #[account(init, payer = user, associated_token::mint = nft_mint, associated_token::authority = user,)]
-    pub user_nft_token_account: Account<'info, TokenAccount>,
+    pub user_nft_ata: Account<'info, TokenAccount>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     associated_token_program: Program<'info, AssociatedToken>,

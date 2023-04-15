@@ -1,3 +1,35 @@
+/*
+  File: App.js
+  Summary:
+    This is a React frontend applicaton for an escrow program implemented on the Solana blockchain.
+    The fronent allows the user to easily interact with the program using various functions and buttons resulting
+    in depositing tokens into escrow and later retrieval of the assets from escrow.
+    To use this application, users need to connect their Solana wallet using wallet connection button.
+  Main functions:
+    `depositTokensToEscrow`/`depositSolToEscrow` in conjunction with `getNFT`:
+      This function takes the selected assets and amount and creates a transaction call
+      to a specific method of the escrow program resulting in assets escrowal.
+      Before the first escrowal it is needed to initialize an escrow counter (only once).
+      Due to the technical limitations the user then has to follow up with a another transaction
+      that retrieves a corresponding non-fungible token (NFT) serving as a key to the escrowed assets.
+    `retrieveFromEscrow`:
+      This function retrieves tokens from the escrow account by providing the NFT mint address.
+      The backing NFT is burnt during the withdrawal process.
+  
+  For a simplified testing this frontend implements following additional functions:
+    1. Airdrop $SOL to a connected wallet
+    2. Create a new token
+    3. Create a user token account (for the newly created token)
+    4. Mint tokens to the user's account
+    5. Get the escrow counter
+
+  
+  Configuration:
+    Please set-up your corresponding RPC provider endpoint at two points in the following code:
+      1. the `network` constant located right after imports following this commentary block
+      2. in the `GetProvider` function 
+*/
+
 import { Buffer } from 'buffer';
 
 import './App.css';
@@ -20,6 +52,8 @@ import {useWallet, WalletProvider, ConnectionProvider} from '@solana/wallet-adap
 import {WalletModalProvider, WalletMultiButton} from '@solana/wallet-adapter-react-ui';
 require('@solana/wallet-adapter-react-ui/styles.css');
 
+const network = "http://127.0.0.1:8899"
+
 window.Buffer = Buffer;
 
 const wallets = [
@@ -36,15 +70,12 @@ const opts = {
   preflightCommitment: "confirmed"
 }
 
-const network = "http://127.0.0.1:8899"
 //const network = clusterApiUrl("devnet");
 
 const Escrow = () => {
   const [message, setMessage] = useState(null);
-  const [extraInfo, setExtraInfo] = useState(null);
   const [mintAddress, setMintAddress] = useState(null);
   const [amount, setAmount] = useState(null);
-  const [escrowTA, setEscrowTA] = useState(null);
   const [tix, setTix] = useState(null);
   const [nftMint, setNFTmint] = useState(null);
   const [nftAddress, setNFTaddress] = useState(null);
@@ -306,20 +337,17 @@ const Escrow = () => {
       const mint = new PublicKey(mintAddress);
       const nftMintKP = new Keypair();
       setNFTmint(nftMintKP.publicKey.toString());
-      //let nft_ata = await splToken.getAssociatedTokenAddress(nftMintKP.publicKey, provider.wallet.publicKey); 
-      let nft_ata = new Keypair();
+      let nft_ata = await splToken.getAssociatedTokenAddress(nftMintKP.publicKey, provider.wallet.publicKey);
       const token_amount = new anchor.BN(numAmount*(Math.pow(10,6)));
       let ata = await splToken.getAssociatedTokenAddress(mint, provider.wallet.publicKey); 
       const escrowTAKeypair = new Keypair();
       // Fetch the counter from the UserEscrowCounter account
       const counter = new anchor.BN(await getCounterForUser());
-      //console.log(counter);
       const counterBuffer = Buffer.from(counter.toArrayLike(Uint8Array, "le", 8));
       const seeds = [
         anchor.utils.bytes.utf8.encode("escrow"),
         provider.wallet.publicKey.toBuffer(),
         counterBuffer
-        //nftMintKP.publicKey.toBuffer(),
       ];
       // Derive escrow address
       const [escrow] = await PublicKey.findProgramAddress(seeds, program.programId);
@@ -343,7 +371,6 @@ const Escrow = () => {
         escrowedTokensTokenAccount: escrowTAKeypair.publicKey,
         userNftTokenAccount: nft_ata.publicKey,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
-        //associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         rent: SYSVAR_RENT_PUBKEY,
         systemProgram: SystemProgram.programId
       })
@@ -351,7 +378,6 @@ const Escrow = () => {
       .rpc({
         skipPreflight:true
       });
-      setEscrowTA(escrowTAKeypair.publicKey);
       setTix(tx);
       let c2 = new anchor.BN(await getCounterForUser());
       console.log(c2);
@@ -361,7 +387,7 @@ const Escrow = () => {
     }
   };
 
-  const retrieveFromEscrow = async (nftAddress, escrowTA) => {
+  const retrieveFromEscrow = async (nftAddress) => {
     const provider = await getProvider();
     const program = new Program(idl, programId, provider);
 
@@ -425,14 +451,12 @@ const Escrow = () => {
           <button onClick={createToken}>Create a new token</button>
           <button onClick={() => createUserAccount(mintAddress)}>Create user token account</button>
           <button onClick={() => airdropToken(mintAddress)}>Mint token to the account</button>
-          <button onClick={() => initializeEscrow(mintAddress, amount)}>Initialize Escrow</button>
-          <button onClick={() => getNFT(nftMint)}>Get NFT</button>
-          <button onClick={() => retrieveFromEscrow(nftAddress, escrowTA)}>Retrieve Tokens</button>
+          <br/>
           <button onClick={getCounterForUser}>Get Escrow Counter</button>
           <button onClick={initEscrowCounter}>Init Escrow Counter</button>
           <p>{message}</p>
-          <p>Additional info: {extraInfo}</p>
-          <p>{mintAddress}</p>
+          <p>{mintAddress === null ? '' : 'New token mint address ("Create a new token" button)= '+mintAddress}</p>
+          <p>Deposit to escrow</p>
           <textarea
             value={mintAddress === null ? '' : mintAddress}
             onChange={(e) => setMintAddress(e.target.value)}
@@ -443,33 +467,24 @@ const Escrow = () => {
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Enter amount to escrow within the program"
           />
-          <p>Escrow token account</p>
-          <textarea
-            value={escrowTA === null ? '' : escrowTA}
-            onChange={(e) => setEscrowTA(e.target.value)}
-            placeholder="Enter escrow token account address"
-          />
+          <br/>
+          <button onClick={() => initializeEscrow(mintAddress, amount)}>Initialize Escrow</button>
+          <button onClick={() => getNFT(nftMint)}>Get NFT</button>
           <p>tix: {tix}</p>
-          <p>NFT mint address: {nftMint}</p>
+          <p>{nftMint === null ? '' : 'Last NFT received= '+nftMint}</p>
+          <hr />
+          <p>Insert NFT address to retrieve from:</p>
           <textarea
             value={nftAddress === null ? '' : nftAddress}
             onChange={(e) => setNFTaddress(e.target.value)}
             placeholder="NFT mint address to retrieve"
           />
+          <br />
+          <button onClick={() => retrieveFromEscrow(nftAddress)}>Retrieve Tokens</button>
         </div>
       </div>
     );
   }
-  /*
-
-            <textarea
-            value={mintAddress}
-            onChange={(e) => setMintAddress(e.target.value)}
-            placeholder="Enter mint address here"
-          />
-  */
-
-
 };
 
 const AppWithProvider = () => (
