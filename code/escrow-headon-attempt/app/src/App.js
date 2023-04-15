@@ -436,24 +436,40 @@ const Escrow = () => {
         provider.wallet.publicKey.toBuffer(),
         nftMetadataNumberBuffer,];
       const [escrowPDA] = await PublicKey.findProgramAddress(seeds, program.programId)
-      //console.log('escrowPDA=', escrowPDA.toString());
-      let escrowTokenAta = (await program.account.escrow.fetch(escrowPDA)).escrowTokenAta;
-      let token_mint = (await program.account.escrow.fetch(escrowPDA)).tokenMint;
-      // Get user's NFT token account 
       let nftAta = await splToken.getAssociatedTokenAddress(nftMint, provider.wallet.publicKey); 
-      let userTokenAta = await splToken.getAssociatedTokenAddress(token_mint, provider.wallet.publicKey); 
+      let isSolana = (await program.account.escrow.fetch(escrowPDA)).isSolana;
+      let tx;
+      if (!isSolana){
+        //console.log('escrowPDA=', escrowPDA.toString());
+        let escrowTokenAta = (await program.account.escrow.fetch(escrowPDA)).escrowTokenAta;
+        let token_mint = (await program.account.escrow.fetch(escrowPDA)).tokenMint;
+        // Get user's NFT token account 
+        let userTokenAta = await splToken.getAssociatedTokenAddress(token_mint, provider.wallet.publicKey); 
 
-      const tx = await program.methods.retrieve().accounts({
-        user: provider.wallet.publicKey,
-        nftMint: nftMint,
-        metadataAccount: metadataPDA,
-        escrow: escrowPDA,
-        userNftAta: nftAta,
-        escrowTokenAta: escrowTokenAta,
-        userTokenAta: userTokenAta,
-      }).rpc({
-        skipPreflight:true
-      })
+        tx = await program.methods.retrieve().accounts({
+          user: provider.wallet.publicKey,
+          nftMint: nftMint,
+          metadataAccount: metadataPDA,
+          escrow: escrowPDA,
+          userNftAta: nftAta,
+          escrowTokenAta: escrowTokenAta,
+          userTokenAta: userTokenAta,
+        }).rpc({
+          skipPreflight:true
+        })
+      } else {
+        tx = await program.methods.retrieve().accounts({
+          user: provider.wallet.publicKey,
+          nftMint: nftMint,
+          metadataAccount: metadataPDA,
+          escrow: escrowPDA,
+          userNftAta: nftAta,
+          escrowTokenAta: nftAta,
+          userTokenAta: nftAta,
+        }).rpc({
+          skipPreflight:true
+        })
+      }
 
       setTix(tx);
       setMessage("Tokens retrieved.");

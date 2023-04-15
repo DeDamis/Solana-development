@@ -47,6 +47,7 @@ pub mod escrow_headon_attempt {
         escrow.token_mint = token_mint.key(); // Token Mint Address
         escrow.nft_mint = nft_mint.key(); // Save NFT Mint Address
         escrow.nft_acquired = false;
+        escrow.is_solana = false;
 
         msg!("Transfering tokens to escrow's token account.");
         anchor_spl::token::transfer(
@@ -79,8 +80,10 @@ pub mod escrow_headon_attempt {
         escrow.bump = *ctx.bumps.get("escrow").unwrap(); 
         escrow.authority = user.key(); // The user's Public Key is stored
         escrow.token_amount = token_amount; // Save the amount deposited to escrow
+        //escrow.escrow_token_ata = Pubkey::new_from_array([0u8; 32]);
         escrow.nft_mint = nft_mint.key(); // Save NFT Mint Address
         escrow.nft_acquired = false;
+        escrow.is_solana = true;
 
         msg!("Transfering Solana coin to escrow.");
         system_program::transfer(
@@ -141,44 +144,59 @@ pub mod escrow_headon_attempt {
         let nft_mint = & ctx.accounts.nft_mint;
         let escrow_token_ata = & ctx.accounts.escrow_token_ata;
         let user_token_ata = & ctx.accounts.user_token_ata;
-
         msg!("Burning the NFT.");
         anchor_spl::token::burn(
             CpiContext::new(ctx.accounts.token_program.to_account_info(),
-             anchor_spl::token::Burn {
+            anchor_spl::token::Burn {
                 mint: nft_mint.to_account_info(),
                 from: user_nft_ata.to_account_info(),
                 authority: user.to_account_info(), 
-             },),
+            },),
             1, // one NFT
         )?;
         msg!("Burn successful.");
+        if escrow.is_solana {
+            msg!("Transfering Solana to the user.");
+            /*
+            system_program::transfer(
+                CpiContext::new_with_signer(ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: escrow.to_account_info(),
+                    to: user.to_account_info(), 
+                },
+                &[&["escrow".as_bytes(), user.key().as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref(), &[escrow.bump]]], 
+                ),
+                escrow.token_amount,
+            )?;
+            */
+            msg!("Transfer successfull.");
+        } else {
+            msg!("Transfering escrowed tokens back to the user.");
+            anchor_spl::token::transfer(
+                CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(),
+                anchor_spl::token::Transfer {
+                    from: escrow_token_ata.to_account_info(),
+                    to: user_token_ata.to_account_info(),
+                    authority: escrow.to_account_info(),
+                },
+                &[&["escrow".as_bytes(), user.key().as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref(), &[escrow.bump]]],
+                ),
+                escrow.token_amount
+            )?;
+            msg!("Transfer was successful.");
 
-        msg!("Transfering escrowed tokens back to the user.");
-        anchor_spl::token::transfer(
-            CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(),
-             anchor_spl::token::Transfer {
-                from: escrow_token_ata.to_account_info(),
-                to: user_token_ata.to_account_info(),
-                authority: escrow.to_account_info(),
-             },
-             &[&["escrow".as_bytes(), user.key().as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref(), &[escrow.bump]]],
-            ),
-            escrow.token_amount
-        )?;
-        msg!("Transfer was successful.");
-
-        msg!("Closing the escrow token account (ata).");
-        anchor_spl::token::close_account(
-            CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(),
-            anchor_spl::token::CloseAccount {
-                account: escrow_token_ata.to_account_info(),
-                destination: user.to_account_info(),
-                authority: escrow.to_account_info(),
-            },
-            &[&["escrow".as_bytes(), user.key().as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref(), &[escrow.bump]]],
-        ))?;
-        msg!("Escrow token account (ata) was successfuly closed.");
+            msg!("Closing the escrow token account (ata).");
+            anchor_spl::token::close_account(
+                CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(),
+                anchor_spl::token::CloseAccount {
+                    account: escrow_token_ata.to_account_info(),
+                    destination: user.to_account_info(),
+                    authority: escrow.to_account_info(),
+                },
+                &[&["escrow".as_bytes(), user.key().as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref(), &[escrow.bump]]],
+            ))?;
+            msg!("Escrow token account (ata) was successfuly closed.");
+        }
         Ok(())
     }
 }
@@ -266,11 +284,14 @@ pub struct Retrieve<'info> {
     pub escrow: Account<'info, Escrow>,
     #[account(mut, constraint = user_nft_ata.mint == escrow.nft_mint)]
     pub user_nft_ata: Account<'info, TokenAccount>,
-    #[account(mut, constraint = escrow_token_ata.key() == escrow.escrow_token_ata)]
+    //#[account(mut, constraint = escrow_token_ata.key() == escrow.escrow_token_ata)]
+    #[account(mut, constraint = escrow_token_ata.key() == user_nft_ata.key() || escrow_token_ata.key() == escrow.escrow_token_ata)]
     pub escrow_token_ata: Account <'info, TokenAccount>,
-    #[account(mut, constraint = user_token_ata.mint == escrow.token_mint)]
+    //#[account(mut, constraint = user_token_ata.mint == escrow.token_mint)]
+    #[account(mut, constraint = user_token_ata.key() == user_nft_ata.key() || user_token_ata.mint == escrow.token_mint)]
     pub user_token_ata: Account<'info, TokenAccount>,
     token_program: Program<'info, Token>,
+    system_program: Program<'info, System>,
 }
 
 // Data structures
@@ -284,6 +305,7 @@ pub struct Escrow {
     token_amount: u64,
     nft_mint: Pubkey,
     nft_acquired: bool,
+    is_solana: bool,
 }
 
 #[account]
@@ -315,7 +337,8 @@ impl Escrow {
     + 32    // escrowed_tokens_token_account: Pubkey
     + 8     // token_amount: u64
     + 32    // nft_mint: Pubkey
-    + 1;    // nft_acquired: bool
+    + 1     // nft_acquired: bool
+    + 1;    // is_solana: bool
 }
 
 impl TokenMetadata {

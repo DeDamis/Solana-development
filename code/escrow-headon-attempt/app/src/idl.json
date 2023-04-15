@@ -223,6 +223,11 @@
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": []
@@ -260,6 +265,10 @@
           },
           {
             "name": "nftAcquired",
+            "type": "bool"
+          },
+          {
+            "name": "isSolana",
             "type": "bool"
           }
         ]
