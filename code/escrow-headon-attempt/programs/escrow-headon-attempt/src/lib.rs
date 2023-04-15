@@ -83,7 +83,6 @@ pub mod escrow_headon_attempt {
         escrow.nft_acquired = false;
 
         msg!("Transfering Solana coin to escrow.");
-        /*
         system_program::transfer(
             CpiContext::new(ctx.accounts.system_program.to_account_info(),
              system_program::Transfer {
@@ -92,7 +91,6 @@ pub mod escrow_headon_attempt {
              },),
             token_amount,
         )?;
-         */
         msg!("The transfer was successful.");
         msg!("Please proceed with NFT retrieval.");
         Ok(())

@@ -330,7 +330,7 @@ const Escrow = () => {
 
     const provider = await getProvider();
     const program = new Program(idl, programId, provider);
-    const numberOfDecimals = 8;
+    const numberOfDecimals = 9;
     setMessage("Initializing escrow...");
 
     try {
@@ -356,13 +356,12 @@ const Escrow = () => {
       ];
       const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
       //console.log("counterPDA (in initialization)=",counterPDA.toString());
-
       const tx = await program.methods.initializeSolEscrow(tokenAmount).accounts({
         user: provider.wallet.publicKey,
         nftMint: nftMintKP.publicKey,
         escrow: escrowPDA,
         userEscrowCounter: counterPDA,
-        userNftTokenAccount: nftAta.publicKey,
+        userNftTokenAccount: nftAta,
       }).signers([nftMintKP]).rpc({
         skipPreflight:true
       });
