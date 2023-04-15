@@ -27,7 +27,7 @@ declare_id!("8KwgsMuDE7HLLKFF22Hnt9ghJZWskQHbZTCmwwk3vzUi");
 pub mod escrow_headon_attempt {
     use super::*;
 
-    // the ordering of the following procedures (functions) in this source code is simillar
+    // The ordering of the following procedures (functions) in this source code is similar
     // to the expected application workflow (counter initialization, escrow deposit, nft reception and at last asset retrieval)
 
     pub fn init_counter(ctx: Context<InitCounter>) -> Result<()> {
