@@ -1,3 +1,21 @@
+/*
+  File: App.js
+  Author: xsmehy00
+  Summary:
+    This Solana program, created using the Anchor framework, is an escrow application (sometimes referred to as "The deposit box.").
+    It allows users to deposit coins ($SOL) or SPL-tokens into an escrow in exchange for a non-fungible token (NFT)
+    that represents the deposited assets. Users can transfer the NFT to any wallet they want.
+    The NFT can then be exchanged back (burned) for the deposited assets, essentialy withdrawing them from the escrow.
+  Main functions:
+    `init_counter`: Initializes an escrow counter for the user. It is needed for hierarchical derivation of the escrow data account PDAs.
+    `initialize_token_escrow`: Deposits SPL-tokens into the token account managed by the escrow PDA.
+    `inizialize_sol_escrow`: Deposits Solana native coins ($SOL) into the escrow PDA.
+    `get_nft`: Mints an NFT to the user's wallet. This NFT is required for later asset retrieval.
+    `retrieve`: Burns the provided NFT and transfers the deposited coins or SPL-tokens back to the user. It also closes accounts that are no longer needed.
+  Compatibility:
+    Anchor framework v0.27.0
+*/
+
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_spl::associated_token::AssociatedToken;
