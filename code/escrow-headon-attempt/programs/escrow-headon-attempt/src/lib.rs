@@ -157,19 +157,7 @@ pub mod escrow_headon_attempt {
         msg!("Burn successful.");
         if escrow.is_solana {
             msg!("Transfering Solana to the user.");
-            /*
-            system_program::transfer(
-                CpiContext::new_with_signer(ctx.accounts.system_program.to_account_info(),
-                system_program::Transfer {
-                    from: escrow.to_account_info(),
-                    to: user.to_account_info(), 
-                },
-                &[&["escrow".as_bytes(), user.key().as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref(), &[escrow.bump]]], 
-                ),
-                escrow.token_amount,
-            )?;
-            */
-            msg!("Transfer successfull.");
+            msg!("Transfer will be handled by escrow account closure.");
         } else {
             msg!("Transfering escrowed tokens back to the user.");
             anchor_spl::token::transfer(
@@ -278,9 +266,9 @@ pub struct Retrieve<'info> {
     pub user: Signer<'info>,
     #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
     pub nft_mint: Account<'info, Mint>, 
-    #[account(mut, seeds= [b"metadata", nft_mint.key().as_ref()], bump = metadata_account.bump)]
+    #[account(mut, close = user, seeds= [b"metadata", nft_mint.key().as_ref()], bump = metadata_account.bump)]
     pub metadata_account: Account<'info, TokenMetadata>,
-    #[account(mut, seeds = [b"escrow", escrow.authority.as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref()], bump = escrow.bump,)]
+    #[account(mut, close = user, seeds = [b"escrow", escrow.authority.as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref()], bump = escrow.bump,)]
     pub escrow: Account<'info, Escrow>,
     #[account(mut, constraint = user_nft_ata.mint == escrow.nft_mint)]
     pub user_nft_ata: Account<'info, TokenAccount>,

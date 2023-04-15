@@ -276,7 +276,6 @@ const Escrow = () => {
       const numAmount = Number(amount);
       const mint = new PublicKey(mintAddress);
       const nftMintKP = new Keypair();
-      setNFTmint(nftMintKP.publicKey.toString());
       let nftAta = await splToken.getAssociatedTokenAddress(nftMintKP.publicKey, provider.wallet.publicKey);
       const tokenAmount  = new anchor.BN(numAmount*(Math.pow(10,numberOfDecimals)));
       let ata = await splToken.getAssociatedTokenAddress(mint, provider.wallet.publicKey); 
@@ -336,7 +335,6 @@ const Escrow = () => {
     try {
       const numAmount = Number(amount);
       const nftMintKP = new Keypair();
-      setNFTmint(nftMintKP.publicKey.toString());
       let nftAta = await splToken.getAssociatedTokenAddress(nftMintKP.publicKey, provider.wallet.publicKey);
       const tokenAmount  = new anchor.BN(numAmount*(Math.pow(10,numberOfDecimals)));
       // Fetch the counter from the UserEscrowCounter account to later derive escrowPDA
@@ -373,7 +371,7 @@ const Escrow = () => {
     }
   };
 
-  const getNFT = async(nftMint) => {
+  const getNFT = async() => {
     const provider = await getProvider();
     const program = new Program(idl, programId, provider);
     setMessage("Trying to retrieve NFT...");
@@ -412,6 +410,7 @@ const Escrow = () => {
       });
 
       setTix(tx);
+      setNFTmint(nft_mint.toString());
       setMessage("NFT Retrieved.");
     } catch (error) {
       setMessage(`Error retrieving NFT: ${error.message}`);
@@ -511,7 +510,7 @@ const Escrow = () => {
           />
           <br/>
           <button onClick={() => depositTokensToEscrow(mintAddress, amount)}>Escrow Tokens</button>
-          <button onClick={() => getNFT(nftMint)}>Get NFT</button>
+          <button onClick={getNFT}>Get NFT</button>
           <br/>
           <button onClick={() => depositSolToEscrow(amount)}>Escrow Solana</button>
           <p>tix: {tix}</p>
