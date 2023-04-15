@@ -3,9 +3,6 @@ use anchor_lang::system_program;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
-// TODO: cleanup escrow data account?
-// As of 15. 04. 2023, this program does not delete data accounts (escrow, token metadata and the escrow counter) after asset retrieval
-
 declare_id!("8KwgsMuDE7HLLKFF22Hnt9ghJZWskQHbZTCmwwk3vzUi");
 
 #[program]
@@ -272,10 +269,8 @@ pub struct Retrieve<'info> {
     pub escrow: Account<'info, Escrow>,
     #[account(mut, constraint = user_nft_ata.mint == escrow.nft_mint)]
     pub user_nft_ata: Account<'info, TokenAccount>,
-    //#[account(mut, constraint = escrow_token_ata.key() == escrow.escrow_token_ata)]
     #[account(mut, constraint = escrow_token_ata.key() == user_nft_ata.key() || escrow_token_ata.key() == escrow.escrow_token_ata)]
     pub escrow_token_ata: Account <'info, TokenAccount>,
-    //#[account(mut, constraint = user_token_ata.mint == escrow.token_mint)]
     #[account(mut, constraint = user_token_ata.key() == user_nft_ata.key() || user_token_ata.mint == escrow.token_mint)]
     pub user_token_ata: Account<'info, TokenAccount>,
     token_program: Program<'info, Token>,
