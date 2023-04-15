@@ -1,9 +1,9 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 // TODO: cleanup escrow data account?
-// As of 12. 04. 2023, this program does not delete data accounts (escrow, token metadata and the escrow counter) after asset retrieval
+// As of 15. 04. 2023, this program does not delete data accounts (escrow, token metadata and the escrow counter) after asset retrieval
 
 declare_id!("8KwgsMuDE7HLLKFF22Hnt9ghJZWskQHbZTCmwwk3vzUi");
 
@@ -23,36 +23,42 @@ pub mod escrow_headon_attempt {
         Ok(())
     }
 
-    pub fn initialize_token_escrow(ctx: Context<InitializeToken>, token_amount: u64) -> Result<()> {
-        msg!("Assigning values.");
-        // Get count of user escrow addresses and increment it
-        let _counter = ctx.accounts.user_escrow_counter.counter;
-        ctx.accounts.user_escrow_counter.previous_counter = ctx.accounts.user_escrow_counter.counter;
-        ctx.accounts.user_escrow_counter.counter += 1;
-        // Init accounts
-        let escrow = &mut ctx.accounts.escrow; // Escrow context account
-        // Fetch bump from the seeds ["escrow"],
+    pub fn initialize_token_escrow(ctx: Context<InitializeTokenEscrow>, token_amount: u64) -> Result<()> {
+        msg!("Updating user's escrow counter.");
+        let user_escrow_counter = & mut ctx.accounts.user_escrow_counter;
+        user_escrow_counter.previous_counter = user_escrow_counter.counter;
+        user_escrow_counter.counter += 1;
+
+        msg!("Initializing the escrow data account.");
+        let user = & ctx.accounts.user;
+        let escrow = &mut ctx.accounts.escrow;
+        let user_token_ata = & ctx.accounts.user_token_ata;
+        let escrow_token_ata = & ctx.accounts.escrow_token_ata;
+        let token_mint = & ctx.accounts.token_mint;
+        let nft_mint = & ctx.accounts.nft_mint; 
+        msg!("Escrow data account {}", escrow.key());
+        // Fetch bump from the seeds of ["escrow"],
         // The Bump is the value the gets us from the ED25519 Eliptic Curve (so the PDA does not have Private Key)
         escrow.bump = *ctx.bumps.get("escrow").unwrap(); 
-        escrow.authority = ctx.accounts.user.key(); // The user Public Key is stored
-        escrow.escrowed_tokens_token_account = ctx.accounts.escrowed_tokens_token_account.key(); // Escrow Token Account Address
+        escrow.authority = user.key(); // The user's Public Key is stored
+        escrow.escrow_token_ata = escrow_token_ata.key(); // Escrow Token Account Address
         escrow.token_amount = token_amount; // Save the amount deposited to escrow
-        escrow.token_mint = ctx.accounts.token_mint.key(); // Token Mint Address
-        escrow.nft_mint = ctx.accounts.nft_mint.key(); // Save NFT Mint Address
+        escrow.token_mint = token_mint.key(); // Token Mint Address
+        escrow.nft_mint = nft_mint.key(); // Save NFT Mint Address
         escrow.nft_acquired = false;
 
-        msg!("Transfering tokens to Escrow token account.");
-        // Transfer token to Escrow Token Account
+        msg!("Transfering tokens to escrow's token account.");
         anchor_spl::token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
                 anchor_spl::token::Transfer {
-                    from: ctx.accounts.user_token.to_account_info(),
-                    to: ctx.accounts.escrowed_tokens_token_account.to_account_info(),
-                    authority: ctx.accounts.user.to_account_info(),
+                    from: user_token_ata.to_account_info(),
+                    to: escrow_token_ata.to_account_info(),
+                    authority: user.to_account_info(),
                 },
             ), token_amount)?;
-        msg!("The transfer was successful");
+        msg!("The transfer was successful.");
+        msg!("Please proceed with NFT retrieval.");
         Ok(())
     }
 
@@ -151,13 +157,13 @@ pub struct InitCounter<'info> {
 }
 
 #[derive(Accounts)]
-pub struct InitializeToken<'info> {
+pub struct InitializeTokenEscrow<'info> {
     #[account(mut)]
     user: Signer<'info>,
     token_mint: Account<'info, Mint>,
     // Mutable reference to the User Token Account (that already existed)
-    #[account(mut, constraint = user_token.mint == token_mint.key() && user_token.owner == user.key() || return err!(CustomError::InvalidUserToken))]
-    user_token: Account<'info, TokenAccount>,
+    #[account(mut, constraint = user_token_ata.mint == token_mint.key() && user_token_ata.owner == user.key() || return err!(CustomError::InvalidUserToken))]
+    user_token_ata: Account<'info, TokenAccount>,
     #[account(init, payer = user, mint::decimals = 0, mint::authority = user, mint::freeze_authority = user)]
     nft_mint: Account<'info, Mint>,
     // PDA (=Program Derived Address) of seeds ["escrow", user.PK]
@@ -170,7 +176,7 @@ pub struct InitializeToken<'info> {
     // The owner of the token account is the Token Program
     // The authority is the PDA (account)
     #[account(init, payer = user, token::mint = token_mint, token::authority = escrow,)]
-    escrowed_tokens_token_account: Account<'info, TokenAccount>,
+    escrow_token_ata: Account<'info, TokenAccount>,
     //#[account(mut, constraint = user_nft_token_account.mint == nft_mint.key() && user_nft_token_account.owner == user.key() || return err!(CustomError::InvalidUserToken))]
     //#[account(init, payer = user, token::mint = token_mint, token::authority = user,)]
     //user_nft_token_account: Account<'info, TokenAccount>,
@@ -222,15 +228,14 @@ pub struct GetNFT<'info> {
 pub struct Retrieve<'info> {
     pub user: Signer<'info>,
     #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
-    pub nft_mint: Account<'info, Mint>,
+    pub nft_mint: Account<'info, Mint>, 
     #[account(mut, seeds= [b"metadata", nft_mint.key().as_ref()], bump = metadata_account.bump)]
     pub metadata_account: Account<'info, TokenMetadata>,
     #[account(mut, seeds = [b"escrow", escrow.authority.as_ref(), metadata_account.escrow_number.to_le_bytes().as_ref()], bump = escrow.bump,)]
     pub escrow: Account<'info, Escrow>,
     #[account(mut, constraint = user_nft_ata.mint == escrow.nft_mint)]
     pub user_nft_ata: Account<'info, TokenAccount>,
-    // code above works
-    #[account(mut, constraint = escrow_token_ata.key() == escrow.escrowed_tokens_token_account)]
+    #[account(mut, constraint = escrow_token_ata.key() == escrow.escrow_token_ata)]
     pub escrow_token_ata: Account <'info, TokenAccount>,
     #[account(mut, constraint = user_token_ata.mint == escrow.token_mint)]
     pub user_token_ata: Account<'info, TokenAccount>,
@@ -244,7 +249,7 @@ pub struct Escrow {
     authority: Pubkey,
     bump: u8,
     token_mint: Pubkey,
-    escrowed_tokens_token_account: Pubkey,
+    escrow_token_ata: Pubkey,
     token_amount: u64,
     nft_mint: Pubkey,
     nft_acquired: bool,
