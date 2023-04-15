@@ -37,7 +37,7 @@
           "isSigner": false
         },
         {
-          "name": "userToken",
+          "name": "userTokenAta",
           "isMut": true,
           "isSigner": false
         },
@@ -57,7 +57,7 @@
           "isSigner": false
         },
         {
-          "name": "escrowedTokensTokenAccount",
+          "name": "escrowTokenAta",
           "isMut": true,
           "isSigner": true
         },
@@ -159,7 +159,7 @@
           "isSigner": false
         },
         {
-          "name": "userNftTokenAccount",
+          "name": "userNftAta",
           "isMut": true,
           "isSigner": false
         },
@@ -247,7 +247,7 @@
             "type": "publicKey"
           },
           {
-            "name": "escrowedTokensTokenAccount",
+            "name": "escrowTokenAta",
             "type": "publicKey"
           },
           {

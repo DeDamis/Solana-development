@@ -170,28 +170,23 @@ pub struct InitializeTokenEscrow<'info> {
     #[account(mut)]
     user: Signer<'info>,
     token_mint: Account<'info, Mint>,
-    // Mutable reference to the User Token Account (that already existed)
+    // Mutable reference to the user's ATA (=Assosiated Token Account) (that already existed)
     #[account(mut, constraint = user_token_ata.mint == token_mint.key() && user_token_ata.owner == user.key() || return err!(CustomError::InvalidUserToken))]
     user_token_ata: Account<'info, TokenAccount>,
+    // Init NFT Mint account
     #[account(init, payer = user, mint::decimals = 0, mint::authority = user, mint::freeze_authority = user)]
     nft_mint: Account<'info, Mint>,
-    // PDA (=Program Derived Address) of seeds ["escrow", user.PK]
+    // Init Escrow Data account
     #[account(init, payer = user, space = Escrow::LEN, seeds = ["escrow".as_bytes(), user.key().as_ref(), user_escrow_counter.counter.to_le_bytes().as_ref()], bump,)]
     pub escrow: Account<'info, Escrow>,
-    // Mutable reference to the User Escrow Addresses counter
+    // Mutable reference to the user's escrow counter
     #[account(mut, seeds = [b"counter", user.key().as_ref()], bump = user_escrow_counter.bump)]
     pub user_escrow_counter: Account<'info, UserEscrowCounter>,
-    // Newly created token account for storing the tokens
-    // The owner of the token account is the Token Program
-    // The authority is the PDA (account)
+    // Newly created token account for storing the tokens, the authority is the escrow PDA
     #[account(init, payer = user, token::mint = token_mint, token::authority = escrow,)]
     escrow_token_ata: Account<'info, TokenAccount>,
-    //#[account(mut, constraint = user_nft_token_account.mint == nft_mint.key() && user_nft_token_account.owner == user.key() || return err!(CustomError::InvalidUserToken))]
-    //#[account(init, payer = user, token::mint = token_mint, token::authority = user,)]
-    //user_nft_token_account: Account<'info, TokenAccount>,
     // Additional Program/Sysvar that are needed
     token_program: Program<'info, Token>,
-    //associated_token_program: Program<'info, AssociatedToken>,
     rent: Sysvar<'info, Rent>,
     system_program: Program<'info, System>,
 }
@@ -202,10 +197,8 @@ pub struct InitializeSolEscrow<'info> {
     user: Signer<'info>,
     #[account(init, payer = user, mint::decimals = 0, mint::authority = user, mint::freeze_authority = user)]
     nft_mint: Account<'info, Mint>,
-    // PDA (=Program Derived Address) of seeds ["escrow", user.PK]
     #[account(init, payer = user, space = Escrow::LEN, seeds = ["escrow".as_bytes(), user.key().as_ref(), user_escrow_counter.counter.to_le_bytes().as_ref()], bump,)]
     pub escrow: Account<'info, Escrow>,
-    // Mutable reference to the User Escrow Addresses counter
     #[account(mut, seeds = [b"counter", user.key().as_ref()], bump = user_escrow_counter.bump)]
     pub user_escrow_counter: Account<'info, UserEscrowCounter>,
     token_program: Program<'info, Token>,
@@ -219,7 +212,6 @@ pub struct GetNFT<'info> {
     pub user: Signer<'info>,
     #[account(mut, constraint = nft_mint.key() == escrow.nft_mint)]
     pub nft_mint: Account<'info, Mint>,
-    // PDA (=Program Derived Address) of seeds ["counter", user.PK]
     #[account(init, payer = user, space = TokenMetadata::LEN, seeds = [b"metadata", nft_mint.key().as_ref()], bump)]
     pub metadata_account: Account<'info, TokenMetadata>,
     #[account(mut, seeds = ["escrow".as_bytes(), escrow.authority.as_ref(), user_escrow_counter.previous_counter.to_le_bytes().as_ref()], bump = escrow.bump,)]

@@ -242,13 +242,13 @@ const Escrow = () => {
       // derive escrow counter PDA from seeds
       const seeds = [anchor.utils.bytes.utf8.encode("counter"), provider.wallet.publicKey.toBuffer(),];
       const [escrowCounterPDA] = await PublicKey.findProgramAddress(seeds, program.programId);
-      const tx = await program.methods.initCounter()
-      .accounts({
+
+      const tx = await program.methods.initCounter().accounts({
         user: provider.wallet.publicKey,
         userEscrowCounter: escrowCounterPDA,
         systemProgram: SystemProgram.programId.toString(),
-      })
-      .rpc();
+      }).rpc();
+
       setTix(tx);
       setMessage("Escrow Counter successfully initialized");
     } catch (error) {
@@ -257,22 +257,31 @@ const Escrow = () => {
   }
 
   const initializeEscrow = async (mintAddress, amount) => {
+    if (amount <= 0) {
+      setMessage("Error: You have to provide an amount to escrow!");
+      return;
+    }
+
+    if (!mintAddress || mintAddress.length === 0) {
+      setMessage("Error: You have to provide a mint address!");
+      return;
+    }
+
     const provider = await getProvider();
     const program = new Program(idl, programId, provider);
     const numberOfDecimals = 6;
     setMessage("Initializing escrow...");
+
     try {
       const numAmount = Number(amount);
-      assert(numAmount > 0, 'Error: You have to provide an amount to escrow!');
-      assert(mintAddress !== null && mintAddress.length > 0, 'Error: You have to provide a mint address!');
       const mint = new PublicKey(mintAddress);
       const nftMintKP = new Keypair();
       setNFTmint(nftMintKP.publicKey.toString());
-      let nft_ata = await splToken.getAssociatedTokenAddress(nftMintKP.publicKey, provider.wallet.publicKey);
-      const token_amount = new anchor.BN(numAmount*(Math.pow(10,numberOfDecimals)));
+      let nftAta = await splToken.getAssociatedTokenAddress(nftMintKP.publicKey, provider.wallet.publicKey);
+      const tokenAmount  = new anchor.BN(numAmount*(Math.pow(10,numberOfDecimals)));
       let ata = await splToken.getAssociatedTokenAddress(mint, provider.wallet.publicKey); 
       const escrowTAKeypair = new Keypair();
-      // Fetch the counter from the UserEscrowCounter account
+      // Fetch the counter from the UserEscrowCounter account to later derive escrowPDA
       const counter = new anchor.BN(await getCounterForUser());
       const counterBuffer = Buffer.from(counter.toArrayLike(Uint8Array, "le", 8));
       const seeds = [
@@ -280,35 +289,32 @@ const Escrow = () => {
         provider.wallet.publicKey.toBuffer(),
         counterBuffer
       ];
-      // Derive escrow address
-      const [escrow] = await PublicKey.findProgramAddress(seeds, program.programId);
+      const [escrowPDA] = await PublicKey.findProgramAddress(seeds, program.programId);
       //console.log("escrowPDA (in initialization)=",escrow.toString());
-      // Derive counter address
+      // Derive counterPDA from seeds
       const seedsCounter = [
         anchor.utils.bytes.utf8.encode("counter"),
         provider.wallet.publicKey.toBuffer(),
       ];
-      // Derive counter account address
       const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
       //console.log("counterPDA (in initialization)=",counterPDA.toString());
-      const tx = await program.methods.initializeTokenEscrow(token_amount)
-      .accounts({
+
+      const tx = await program.methods.initializeTokenEscrow(tokenAmount).accounts({
         user: provider.wallet.publicKey,
         tokenMint: mint,
         userToken: ata, // user token account == ata
         nftMint: nftMintKP.publicKey,
-        escrow: escrow,
+        escrow: escrowPDA,
         userEscrowCounter: counterPDA,
         escrowedTokensTokenAccount: escrowTAKeypair.publicKey,
-        userNftTokenAccount: nft_ata.publicKey,
+        userNftTokenAccount: nftAta.publicKey,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         rent: SYSVAR_RENT_PUBKEY,
         systemProgram: SystemProgram.programId
-      })
-      .signers([escrowTAKeypair, nftMintKP])
-      .rpc({
+      }).signers([escrowTAKeypair, nftMintKP]).rpc({
         skipPreflight:true
       });
+
       setTix(tx);
       setMessage("Escrow initialized.");
     } catch (error) {
@@ -320,6 +326,7 @@ const Escrow = () => {
     const provider = await getProvider();
     const program = new Program(idl, programId, provider);
     setMessage("Trying to retrieve NFT...");
+
     try {
       // Retrieve counter and get escrow PDA
       const previousCounter = new anchor.BN(await getPreviousCounterForUser());
@@ -338,8 +345,8 @@ const Escrow = () => {
       const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
       const seedsMetadata =[anchor.utils.bytes.utf8.encode("metadata"), nft_mint.toBuffer()];
       const [metadataPDA] = await PublicKey.findProgramAddress(seedsMetadata, program.programId);
-      const tx = await program.methods.getNft()
-      .accounts({
+
+      const tx = await program.methods.getNft().accounts({
           user: provider.wallet.publicKey,
           nftMint: nft_mint,
           metadataAccount: metadataPDA,
@@ -349,16 +356,16 @@ const Escrow = () => {
           systemProgram: SystemProgram.programId.toString(),
           tokenProgram: splToken.TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      })
-      .rpc({
+      }).rpc({
         skipPreflight:true
       });
+
       setTix(tx);
       setMessage("NFT Retrieved.");
     } catch (error) {
       setMessage(`Error retrieving NFT: ${error.message}`);
     }
-  }
+  };
 
   const retrieveFromEscrow = async (nftAddress) => {
     const provider = await getProvider();
@@ -366,9 +373,9 @@ const Escrow = () => {
     setMessage("Retrieving tokens from escrow...");
     try {
       assert(nftAddress !== null && nftAddress.length > 0, 'Error: You have to provide the nft mint address!');
-      const nft_mint = new PublicKey(nftAddress); 
+      const nftMint = new PublicKey(nftAddress); 
       //console.log('mint key to generate metadataPDA from=', nft_mint.toString());
-      const seedsMetadata =[anchor.utils.bytes.utf8.encode("metadata"), nft_mint.toBuffer()];
+      const seedsMetadata =[anchor.utils.bytes.utf8.encode("metadata"), nftMint.toBuffer()];
       const [metadataPDA] = await PublicKey.findProgramAddress(seedsMetadata, program.programId);
       //console.log('metadataPDA=', metadataPDA.toString());
       const nftMetadataNumber = (await program.account.tokenMetadata.fetch(metadataPDA)).escrowNumber
@@ -379,24 +386,24 @@ const Escrow = () => {
         nftMetadataNumberBuffer,];
       const [escrowPDA] = await PublicKey.findProgramAddress(seeds, program.programId)
       //console.log('escrowPDA=', escrowPDA.toString());
-      let escrow_tokens_ata = (await program.account.escrow.fetch(escrowPDA)).escrowedTokensTokenAccount;
+      let escrowTokenAta = (await program.account.escrow.fetch(escrowPDA)).escrowedTokensTokenAccount;
       let token_mint = (await program.account.escrow.fetch(escrowPDA)).tokenMint;
       // Get user's NFT token account 
-      let nft_ata = await splToken.getAssociatedTokenAddress(nft_mint, provider.wallet.publicKey); 
-      let user_token_ata = await splToken.getAssociatedTokenAddress(token_mint, provider.wallet.publicKey); 
-      const tx = await program.methods.retrieve()
-      .accounts({
+      let nftAta = await splToken.getAssociatedTokenAddress(nftMint, provider.wallet.publicKey); 
+      let userTokenAta = await splToken.getAssociatedTokenAddress(token_mint, provider.wallet.publicKey); 
+
+      const tx = await program.methods.retrieve().accounts({
         user: provider.wallet.publicKey,
-        nftMint: nft_mint,
+        nftMint: nftMint,
         metadataAccount: metadataPDA,
         escrow: escrowPDA,
-        userNftAta: nft_ata,
-        escrowTokenAta: escrow_tokens_ata,
-        userTokenAta: user_token_ata,
-      })
-      .rpc({
+        userNftAta: nftAta,
+        escrowTokenAta: escrowTokenAta,
+        userTokenAta: userTokenAta,
+      }).rpc({
         skipPreflight:true
       })
+
       setTix(tx);
       setMessage("Tokens retrieved.");
     } catch (error) {
