@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -62,7 +63,38 @@ pub mod escrow_headon_attempt {
         Ok(())
     }
 
-    pub fn initialize_sol_escrow(_ctx: Context<InitializeSolEscrow>, _token_amount: u64) -> Result<()> {
+    pub fn initialize_sol_escrow(ctx: Context<InitializeSolEscrow>, token_amount: u64) -> Result<()> {
+        msg!("Updating user's escrow counter.");
+        let user_escrow_counter = & mut ctx.accounts.user_escrow_counter;
+        user_escrow_counter.previous_counter = user_escrow_counter.counter;
+        user_escrow_counter.counter += 1;
+
+        msg!("Initializing the escrow data account.");
+        let user = & ctx.accounts.user;
+        let escrow = &mut ctx.accounts.escrow;
+        let nft_mint = & ctx.accounts.nft_mint; 
+        msg!("Escrow data account {}", escrow.key());
+        // Fetch bump from the seeds of ["escrow"],
+        // The Bump is the value the gets us from the ED25519 Eliptic Curve (so the PDA does not have Private Key)
+        escrow.bump = *ctx.bumps.get("escrow").unwrap(); 
+        escrow.authority = user.key(); // The user's Public Key is stored
+        escrow.token_amount = token_amount; // Save the amount deposited to escrow
+        escrow.nft_mint = nft_mint.key(); // Save NFT Mint Address
+        escrow.nft_acquired = false;
+
+        msg!("Transfering Solana coin to escrow.");
+        /*
+        system_program::transfer(
+            CpiContext::new(ctx.accounts.system_program.to_account_info(),
+             system_program::Transfer {
+                from: user.to_account_info(),
+                to: escrow.to_account_info(), 
+             },),
+            token_amount,
+        )?;
+         */
+        msg!("The transfer was successful.");
+        msg!("Please proceed with NFT retrieval.");
         Ok(())
     }
 

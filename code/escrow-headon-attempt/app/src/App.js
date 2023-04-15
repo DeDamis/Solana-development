@@ -256,7 +256,7 @@ const Escrow = () => {
     }
   }
 
-  const initializeEscrow = async (mintAddress, amount) => {
+  const depositTokensToEscrow = async (mintAddress, amount) => {
     if (amount <= 0) {
       setMessage("Error: You have to provide an amount to escrow!");
       return;
@@ -302,7 +302,7 @@ const Escrow = () => {
       const tx = await program.methods.initializeTokenEscrow(tokenAmount).accounts({
         user: provider.wallet.publicKey,
         tokenMint: mint,
-        userToken: ata, // user token account == ata
+        userTokenAta: ata, // user token account == ata
         nftMint: nftMintKP.publicKey,
         escrow: escrowPDA,
         userEscrowCounter: counterPDA,
@@ -312,6 +312,58 @@ const Escrow = () => {
         rent: SYSVAR_RENT_PUBKEY,
         systemProgram: SystemProgram.programId
       }).signers([escrowTAKeypair, nftMintKP]).rpc({
+        skipPreflight:true
+      });
+
+      setTix(tx);
+      setMessage("Escrow initialized.");
+    } catch (error) {
+      setMessage(`Error initializing escrow: ${error.message}`);
+    }
+  };
+
+  const depositSolToEscrow = async (amount) => {
+    if (amount <= 0) {
+      setMessage("Error: You have to provide an amount to escrow!");
+      return;
+    }
+
+    const provider = await getProvider();
+    const program = new Program(idl, programId, provider);
+    const numberOfDecimals = 8;
+    setMessage("Initializing escrow...");
+
+    try {
+      const numAmount = Number(amount);
+      const nftMintKP = new Keypair();
+      setNFTmint(nftMintKP.publicKey.toString());
+      let nftAta = await splToken.getAssociatedTokenAddress(nftMintKP.publicKey, provider.wallet.publicKey);
+      const tokenAmount  = new anchor.BN(numAmount*(Math.pow(10,numberOfDecimals)));
+      // Fetch the counter from the UserEscrowCounter account to later derive escrowPDA
+      const counter = new anchor.BN(await getCounterForUser());
+      const counterBuffer = Buffer.from(counter.toArrayLike(Uint8Array, "le", 8));
+      const seeds = [
+        anchor.utils.bytes.utf8.encode("escrow"),
+        provider.wallet.publicKey.toBuffer(),
+        counterBuffer
+      ];
+      const [escrowPDA] = await PublicKey.findProgramAddress(seeds, program.programId);
+      //console.log("escrowPDA (in initialization)=",escrow.toString());
+      // Derive counterPDA from seeds
+      const seedsCounter = [
+        anchor.utils.bytes.utf8.encode("counter"),
+        provider.wallet.publicKey.toBuffer(),
+      ];
+      const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
+      //console.log("counterPDA (in initialization)=",counterPDA.toString());
+
+      const tx = await program.methods.initializeSolEscrow(tokenAmount).accounts({
+        user: provider.wallet.publicKey,
+        nftMint: nftMintKP.publicKey,
+        escrow: escrowPDA,
+        userEscrowCounter: counterPDA,
+        userNftTokenAccount: nftAta.publicKey,
+      }).signers([nftMintKP]).rpc({
         skipPreflight:true
       });
 
@@ -443,8 +495,10 @@ const Escrow = () => {
             placeholder="Enter amount to escrow within the program"
           />
           <br/>
-          <button onClick={() => initializeEscrow(mintAddress, amount)}>Initialize Escrow</button>
+          <button onClick={() => depositTokensToEscrow(mintAddress, amount)}>Escrow Tokens</button>
           <button onClick={() => getNFT(nftMint)}>Get NFT</button>
+          <br/>
+          <button onClick={() => depositSolToEscrow(amount)}>Escrow Solana</button>
           <p>tix: {tix}</p>
           <p>{nftMint === null ? '' : 'Last NFT received= '+nftMint}</p>
           <hr />
