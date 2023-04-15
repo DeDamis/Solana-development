@@ -306,7 +306,7 @@ const Escrow = () => {
         nftMint: nftMintKP.publicKey,
         escrow: escrowPDA,
         userEscrowCounter: counterPDA,
-        escrowedTokensTokenAccount: escrowTAKeypair.publicKey,
+        escrowTokenAta: escrowTAKeypair.publicKey,
         userNftTokenAccount: nftAta.publicKey,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         rent: SYSVAR_RENT_PUBKEY,
