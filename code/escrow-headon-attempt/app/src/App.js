@@ -11,7 +11,7 @@ import {Program, AnchorProvider, web3} from '@coral-xyz/anchor';
 import * as anchor from "@coral-xyz/anchor";
 import idl from "./idl.json";
 import assert from 'assert';
-import {PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID} from '@metaplex-foundation/mpl-token-metadata';
+import {PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID, mintNewEditionFromMasterEditionViaVaultProxyInstructionDiscriminator} from '@metaplex-foundation/mpl-token-metadata';
 
 
 
@@ -79,7 +79,7 @@ const Escrow = () => {
     const [counterPDA] = await PublicKey.findProgramAddress(seeds, program.programId);
     try {
       const counter = (await program.account.userEscrowCounter.fetch(counterPDA)).counter;
-      console.log(counter);
+      //console.log(counter);
       setMessage(`PreviousCounter fetched = ${counter}`);
       return counter;
     } catch (error) {
@@ -97,7 +97,7 @@ const Escrow = () => {
     const [counterPDA] = await PublicKey.findProgramAddress(seeds, program.programId);
     try {
       const counter = (await program.account.userEscrowCounter.fetch(counterPDA)).previousCounter;
-      console.log(counter);
+      //console.log(counter);
       setMessage(`Counter fetched = ${counter}`);
       return counter;
     } catch (error) {
@@ -269,10 +269,13 @@ const Escrow = () => {
       // Derive counter PDA from seeds
       const seedsCounter = [anchor.utils.bytes.utf8.encode("counter"), provider.wallet.publicKey.toBuffer(),];
       const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
+      const seedsMetadata =[anchor.utils.bytes.utf8.encode("metadata"), nft_mint.toBuffer()];
+      const [metadataPDA] = await PublicKey.findProgramAddress(seedsMetadata, program.programId);
       const tx = await program.methods.getNft()
       .accounts({
           user: provider.wallet.publicKey,
           nftMint: nft_mint,
+          metadataAccount: metadataPDA,
           escrow: escrowPDA,
           userEscrowCounter: counterPDA,
           userNftTokenAccount: ata,
@@ -320,7 +323,7 @@ const Escrow = () => {
       ];
       // Derive escrow address
       const [escrow] = await PublicKey.findProgramAddress(seeds, program.programId);
-      console.log("escrowPDA (in initialization)="+escrow.toString());
+      console.log("escrowPDA (in initialization)=",escrow.toString());
       // Derive counter address
       const seedsCounter = [
         anchor.utils.bytes.utf8.encode("counter"),
@@ -328,8 +331,8 @@ const Escrow = () => {
       ];
       // Derive counter account address
       const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
-      console.log(counterPDA.toString());
-      const tx = await program.methods.initialize(token_amount)
+      console.log("counterPDA (in initialization)=",counterPDA.toString());
+      const tx = await program.methods.initializeTokenEscrow(token_amount)
       .accounts({
         user: provider.wallet.publicKey,
         tokenMint: mint,
@@ -358,47 +361,44 @@ const Escrow = () => {
     }
   };
 
-  const retrieveFromEscrow = async (mintAddress, escrowTA) => {
+  const retrieveFromEscrow = async (nftAddress, escrowTA) => {
     const provider = await getProvider();
     const program = new Program(idl, programId, provider);
 
     setMessage("Retrieving tokens from escrow...");
     try {
-      assert(mintAddress !== null && mintAddress.length > 0, 'Error: You have to provide the nft mint address!');
-      //assert(escrowTA !== null && escrowTA.length > 0, 'Error: You have to provide a escrow token account address!');
-      const mint = new PublicKey(mintAddress);
-      //const escrowTAaddress = new PublicKey(escrowTA.toString());
-      let ata = await splToken.getAssociatedTokenAddress(mint, provider.wallet.publicKey); 
-      // retrieve counter and get escrow PDA
-      const previousCounter = new anchor.BN(await getPreviousCounterForUser());
-
-
-
-      let previousCounterBuffer = Buffer.from(previousCounter.toArrayLike(Uint8Array, "le", 8));
+      assert(nftAddress !== null && nftAddress.length > 0, 'Error: You have to provide the nft mint address!');
+      const nft_mint = new PublicKey(nftAddress); 
+      console.log('mint key to generate metadataPDA from=', nft_mint.toString());
+      const seedsMetadata =[anchor.utils.bytes.utf8.encode("metadata"), nft_mint.toBuffer()];
+      const [metadataPDA] = await PublicKey.findProgramAddress(seedsMetadata, program.programId);
+      console.log('metadataPDA=', metadataPDA.toString());
+      const nftMetadataNumber = (await program.account.tokenMetadata.fetch(metadataPDA)).escrowNumber
+      const nftMetadataNumberBuffer = Buffer.from(nftMetadataNumber.toArrayLike(Uint8Array, "le", 8));
+      //let previousCounterBuffer = Buffer.from(previousCounter.toArrayLike(Uint8Array, "le", 8));
       const seeds = [
         anchor.utils.bytes.utf8.encode("escrow"),
         provider.wallet.publicKey.toBuffer(),
-        previousCounterBuffer,];
+        nftMetadataNumberBuffer,];
       const [escrowPDA] = await PublicKey.findProgramAddress(seeds, program.programId)
-      let escrowTAaddress = (await program.account.escrow.fetch(escrowPDA)).escrowedTokensTokenAccount;
-      // Derive counter address
-      const seedsCounter = [anchor.utils.bytes.utf8.encode("counter"),
-                            provider.wallet.publicKey.toBuffer(),];
-      // Derive counter account address
+      console.log('escrowPDA=', escrowPDA.toString());
+      let escrow_tokens_ata = (await program.account.escrow.fetch(escrowPDA)).escrowedTokensTokenAccount;
+      let token_mint = (await program.account.escrow.fetch(escrowPDA)).tokenMint;
+      // Derive counter PDA address
+      const seedsCounter = [anchor.utils.bytes.utf8.encode("counter"), provider.wallet.publicKey.toBuffer(),];
       const [counterPDA] = await PublicKey.findProgramAddress(seedsCounter, program.programId);
       // Get user's NFT token account 
-      let nft_mint = (await program.account.escrow.fetch(escrowPDA)).nftMint;
       let nft_ata = await splToken.getAssociatedTokenAddress(nft_mint, provider.wallet.publicKey); 
+      let user_token_ata = await splToken.getAssociatedTokenAddress(token_mint, provider.wallet.publicKey); 
       const tx = await program.methods.retrieve()
       .accounts({
         user: provider.wallet.publicKey,
         nftMint: nft_mint,
-        userNftTokenAccount: nft_ata,
+        metadataAccount: metadataPDA,
         escrow: escrowPDA,
-        userEscrowCounter: counterPDA,
-        escrowedTokensTokenAccount: escrowTAaddress,
-        tokensTokenAccount: ata,
-        tokenProgram: splToken.TOKEN_PROGRAM_ID
+        userNftAta: nft_ata,
+        escrowTokenAta: escrow_tokens_ata,
+        userTokenAta: user_token_ata,
       })
       .rpc({
         skipPreflight:true
@@ -427,7 +427,7 @@ const Escrow = () => {
           <button onClick={() => airdropToken(mintAddress)}>Mint token to the account</button>
           <button onClick={() => initializeEscrow(mintAddress, amount)}>Initialize Escrow</button>
           <button onClick={() => getNFT(nftMint)}>Get NFT</button>
-          <button onClick={() => retrieveFromEscrow(mintAddress, escrowTA)}>Retrieve Tokens</button>
+          <button onClick={() => retrieveFromEscrow(nftAddress, escrowTA)}>Retrieve Tokens</button>
           <button onClick={getCounterForUser}>Get Escrow Counter</button>
           <button onClick={initEscrowCounter}>Init Escrow Counter</button>
           <p>{message}</p>

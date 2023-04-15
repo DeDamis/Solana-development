@@ -24,7 +24,7 @@
       "args": []
     },
     {
-      "name": "initialize",
+      "name": "initializeTokenEscrow",
       "accounts": [
         {
           "name": "user",
@@ -85,6 +85,52 @@
       ]
     },
     {
+      "name": "initializeSolEscrow",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "escrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userEscrowCounter",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "tokenAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "getNft",
       "accounts": [
         {
@@ -94,6 +140,11 @@
         },
         {
           "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "metadataAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -144,7 +195,7 @@
           "isSigner": false
         },
         {
-          "name": "userNftTokenAccount",
+          "name": "metadataAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -154,17 +205,17 @@
           "isSigner": false
         },
         {
-          "name": "userEscrowCounter",
+          "name": "userNftAta",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "escrowedTokensTokenAccount",
+          "name": "escrowTokenAta",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokensTokenAccount",
+          "name": "userTokenAta",
           "isMut": true,
           "isSigner": false
         },
@@ -226,6 +277,18 @@
           {
             "name": "escrowNumber",
             "type": "u64"
+          },
+          {
+            "name": "escrowedTokenMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "escrowedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -263,6 +326,6 @@
     }
   ],
   "metadata": {
-    "address": "557jTvF33E6y2rBk9rXVbLDtSepABhpdvNRm8JssSJKi"
+    "address": "8KwgsMuDE7HLLKFF22Hnt9ghJZWskQHbZTCmwwk3vzUi"
   }
 }
