@@ -1,22 +1,23 @@
 /*
   File: App.js
+  Author: xsmehy00
   Summary:
-    This is a React frontend applicaton for an escrow program implemented on the Solana blockchain.
-    The fronent allows the user to easily interact with the program using various functions and buttons resulting
-    in depositing tokens into escrow and later retrieval of the assets from escrow.
-    To use this application, users need to connect their Solana wallet using wallet connection button.
+    This is a React frontend application for an escrow program implemented on the Solana blockchain.
+    The frontend allows the user to easily interact with the program using various functions and buttons,
+    enabling them to deposit tokens into escrow and later retrieve assets from the escrow.
+    To use this application, users need to connect their Solana wallet using the wallet connection button.
   Main functions:
-    `depositTokensToEscrow`/`depositSolToEscrow` in conjunction with `getNFT`:
-      This function takes the selected assets and amount and creates a transaction call
-      to a specific method of the escrow program resulting in assets escrowal.
-      Before the first escrowal it is needed to initialize an escrow counter (only once).
-      Due to the technical limitations the user then has to follow up with a another transaction
+    `depositTokensToEscrow` or `depositSolToEscrow` in conjunction with `getNFT`:
+      This function takes the selected assets and amount, and creates a transaction call
+      to a specific method of the escrow program, resulting in asset escrow.
+      Before the first escrow, it is necessary to initialize the escrow counter (only once).
+      Due to technical limitations, the user then has to follow up with another transaction
       that retrieves a corresponding non-fungible token (NFT) serving as a key to the escrowed assets.
     `retrieveFromEscrow`:
       This function retrieves tokens from the escrow account by providing the NFT mint address.
-      The backing NFT is burnt during the withdrawal process.
+      The backing NFT is burned during the withdrawal process.
   
-  For a simplified testing this frontend implements following additional functions:
+  For simplified testing, this frontend implements the following additional functions:
     1. Airdrop $SOL to a connected wallet
     2. Create a new token
     3. Create a user token account (for the newly created token)
@@ -25,9 +26,9 @@
 
   
   Configuration:
-    Please set-up your corresponding RPC provider endpoint at two points in the following code:
+    Please set up your corresponding RPC provider endpoint at two points in the following code:
       1. the `network` constant located right after imports following this commentary block
-      2. in the `GetProvider` function 
+      2. in the `getProvider` function 
 */
 
 import React, { useState } from "react";
