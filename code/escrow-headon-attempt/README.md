@@ -6,7 +6,7 @@ Author: xsmehy00
 
 ## Prerequisites
 
-Make sure to have the following tools installed on your system:
+Make sure to have the following utilities installed on your system:
 
 - **Rust**: Install Rust by running:
 
@@ -58,14 +58,14 @@ sudo apt install cargo
 1. Start up a local validator node:
 
 ```
-  solana-keygen new
-  solana config set --url http://127.0.0.1:8899
-  solana-test-validator
+solana-keygen new
+solana config set --url http://127.0.0.1:8899
+solana-test-validator
 ```
 
 2. Create, prepare, and build the Anchor project:
 ```
-    anchor init <name>
+anchor init <name>
 ```
 For example:
 ```
@@ -98,7 +98,9 @@ Copy `./escrow/app/package.json` to your project. Then run:
 cd app
 npm install
 ```
-Copy the `./escrow/app/src` folder to your project and set the correct "Program Id" in the `idl.json` file. Finally, run:
+Copy the `./escrow/app/src` folder to your project, replacing the existing `src` folder.
+With the same "Program Id" you deployed the program with, replace the metadata.address (at the end of the file)in the `idl.json` file. 
+Finally, run:
 
 ```
 npm start
