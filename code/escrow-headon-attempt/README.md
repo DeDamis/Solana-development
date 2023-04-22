@@ -1,77 +1,109 @@
-  File: README.md
-  Author: xsmehy00
-  Summary:
-    This Solana program, created using the Anchor framework, is an escrow application (sometimes referred to as "The deposit box.").
-    There is backend in Rust, file lib.rs located in the programs/escrow/src
-    There is a frontend in React, located in the app folder
+# Escrow Application with Solana and Anchor
 
-How to get up & running
+This Solana program, created using the Anchor framework, is an escrow application (sometimes referred to as "The deposit box"). It features a Rust backend (located in the `programs/escrow/src` directory) and a React frontend (located in the `app` folder).
 
-prerequisites
+Author: xsmehy00
 
-Rust
+## Prerequisites
+
+Make sure to have the following tools installed on your system:
+
+- **Rust**: Install Rust by running:
+
+
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-node (installation is distro dependent)
+
+- **Node.js**: Install Node.js using the Node Version Manager (nvm):
+
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
 nvm install node
 
-npm
+
+- **npm**: Install npm using the package manager for your distribution. For example, on Ubuntu:
 sudo apt install npm
 
-yarn
+
+- **Yarn**: Install Yarn globally:
+
+
 sudo npm i -g yarn
 
-solana cli
-latest version here -> https://docs.solana.com/cli/install-solana-cli-tools
+
+
+- **Solana CLI**: Install the Solana CLI by following the [official instructions](https://docs.solana.com/cli/install-solana-cli-tools) or using the script below:
+
+
 sh -c "$(curl -sSfL https://release.solana.com/v1.15.2/install)"
 
-anchor via avm (anchor version manager)
+
+- **Anchor CLI**: Install Anchor CLI via AVM (Anchor Version Manager):
+
+
 sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
 avm install latest
 avm use latest
 
-cargo
+
+- **Cargo**: Install Cargo using the package manager for your distribution. For example, on Ubuntu:
+
+
 sudo apt install cargo
 
-setting things up
 
-start up local validator node
+## Setting Things Up
+
+1. Start up a local validator node:
+
+
   solana-keygen new
   solana config set --url http://127.0.0.1:8899
   solana-test-validator
 
-create, prepare, build anchor project
+
+2. Create, prepare, and build the Anchor project:
+
+
     anchor init <name>
- example:   anchor init escrow
+For example:
+
+   anchor init escrow
  cd escrow
  anchor build
- -- copy ./escrow/programs/escrow folder with its contents to your project
- -- copy ./escrow/Anchor.toml to your project
- -- copy ./package.json to your project
+Copy the `./escrow/programs/escrow` folder with its contents to your project. Also, copy `./escrow/Anchor.toml` and `./package.json` to your project. Then run:
  yarn install
  anchor build
  anchor deploy
- -- copy "Program Id" to Anchor.toml and lib.rs
+Copy the "Program Id" to `Anchor.toml` and `lib.rs`. Finally, run:
+
+
  anchor build
  anchor deploy
 
- frontend
+
+3. Set up the frontend:
+
+
  cd escrow
  npx create-react-app app
--- copy ./escrow/app/package.json to your project
+Copy `./escrow/app/package.json` to your project. Then run:
+
+
 cd app
 npm install
--- copy ./escrow/app/src folder to your project
--- set correct "Program Id" in the idl.json file 
+Copy the `./escrow/app/src` folder to your project and set the correct "Program Id" in the `idl.json` file. Finally, run:
+
+
 npm start
 
-Tested versions:
-rustc 1.69.0
-npm 8.5.1
-yarn v1.22.19
-solana-cli v1.15.2
-avm 0.27.0
-anchor-cli 0.27.0
-Node.js v20.0.0.
+
+## Tested Versions
+
+- rustc 1.69.0
+- npm 8.5.1
+- yarn v1.22.19
+- solana-cli v1.15.2
+- avm 0.27.0
+- anchor-cli 0.27.0
+- Node.js v20.0.0
