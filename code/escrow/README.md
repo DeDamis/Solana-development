@@ -73,7 +73,7 @@ anchor init escrow
 cd escrow
 anchor build
 ```
-Copy the `./escrow/programs/escrow` folder with its contents to your project. Also, copy `./escrow/Anchor.toml` and `./package.json` to your project. Then run:
+Copy the `~/escrow/programs/escrow` folder with its contents to your project. Also, copy `~/escrow/Anchor.toml` and `~/escrow/package.json` to your project. Then run:
 ```
 yarn install
 anchor build
@@ -92,13 +92,13 @@ anchor deploy
 cd escrow
 npx create-react-app app
 ```
-Copy `./escrow/app/package.json` to your project. Then run:
+Copy `~/escrow/app/package.json` to your project. Then run:
 
 ```
 cd app
 npm install
 ```
-Copy the `./escrow/app/src` folder to your project, replacing the existing `src` folder.
+Copy the `~/escrow/app/src` folder to your project, replacing the existing `src` folder.
 With the same "Program Id" you deployed the program with, replace the metadata.address (at the end of the file)in the `idl.json` file. 
 Finally, run:
 

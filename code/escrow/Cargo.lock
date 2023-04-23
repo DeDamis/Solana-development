@@ -818,8 +818,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "escrow-headon-attempt"
-version = "0.1.0"
+name = "escrow"
+version = "1.0.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
