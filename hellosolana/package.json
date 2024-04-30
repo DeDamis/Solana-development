@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@solana/spl-name-service": "^0.1.4",
-    "@solana/web3.js": "^1.66.2",
+    "@solana/web3.js": "^1.66.6",
     "@supercharge/fs": "^3.4.0",
     "request": "^2.88.2"
   }
