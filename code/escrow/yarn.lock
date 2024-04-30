@@ -79,10 +79,10 @@
     "@solana/buffer-layout-utils" "^0.2.0"
     buffer "^6.0.3"
 
-"@solana/web3.js@^1.32.0", "@solana/web3.js@^1.68.0":
-  version "1.74.0"
-  resolved "https://registry.npmjs.org/@solana/web3.js/-/web3.js-1.74.0.tgz"
-  integrity sha512-RKZyPqizPCxmpMGfpu4fuplNZEWCrhRBjjVstv5QnAJvgln1jgOfgui+rjl1ExnqDnWKg9uaZ5jtGROH/cwabg==
+"@solana/web3.js@^1.32.0", "@solana/web3.js@^1.68.0", "@solana/web3.js@^1.74.1":
+  version "1.74.1"
+  resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.74.1.tgz#96767299864af316ef2752b965955dcea8fbd2b5"
+  integrity sha512-M+DqtinlMu6NfpcnL0dJls5T/GjCDfYi90eB+XTH6QprRN9db3QcBgDOx43gNSU4AgMLJCfMTu91egyB4AzdSA==
   dependencies:
     "@babel/runtime" "^7.12.5"
     "@noble/ed25519" "^1.7.0"
