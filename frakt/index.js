@@ -81,7 +81,7 @@ async function getConnection(url) {
   console.log(`Writing done.`)
   
   
-  const heliusConnection = new Connection("https://rpc.helius.xyz/?api-key=c2811122-cfbf-47a8-9f4e-30b3ac1cc68c");
+  const heliusConnection = new Connection("https://rpc.helius.xyz/?api-key=");
   // let rr = await conn.getSignaturesForAddress(publicKeyWallet, {limit : 3}); // Helius alt
   console.log(`Parsing transactions....`)
   let allParsed = [];
